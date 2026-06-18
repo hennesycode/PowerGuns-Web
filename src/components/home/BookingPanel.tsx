@@ -31,7 +31,7 @@ export function BookingPanel() {
     acceptedTerms: false,
   });
 
-  const update = (k: string, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
+  const update = (k: string, v: string | boolean | null) => setForm((p) => ({ ...p, [k]: v ?? "" }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

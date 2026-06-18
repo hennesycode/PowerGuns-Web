@@ -14,7 +14,7 @@ export const bookingSchema = z.object({
   persons: z.number().int().min(1, "Mínimo 1 persona").max(20, "Máximo 20 personas"),
   notes: z.string().max(500).optional().default(""),
   acceptedTerms: z.literal(true, {
-    errorMap: () => ({ message: "Debe aceptar los términos y condiciones de seguridad" }),
+    message: "Debe aceptar los términos y condiciones de seguridad",
   }),
 });
 

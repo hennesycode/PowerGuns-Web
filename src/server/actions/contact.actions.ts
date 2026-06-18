@@ -7,7 +7,7 @@ export async function submitContact(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
   const parsed = contactSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.errors[0].message };
+    return { error: parsed.error.issues[0].message };
   }
 
   try {

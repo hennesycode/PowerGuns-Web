@@ -15,7 +15,7 @@ export async function createBooking(formData: FormData) {
 
   const parsed = bookingSchema.safeParse(data);
   if (!parsed.success) {
-    return { error: parsed.error.errors[0].message };
+    return { error: parsed.error.issues[0].message };
   }
 
   try {
