@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Customer {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String
+  email     String?
+  createdAt DateTime  @default(now())
+  bookings  Booking[]
+}
+
+model Service {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String    @db.Text
+  icon        String
+  orderNum    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  bookings    Booking[]
+}
+
+model Package {
+  id          Int       @id @default(autoincrement())
+  name        String
+  tier        String
+  tierLevel   Int
+  description String    @db.Text
+  price       Decimal   @db.Decimal(10, 2)
+  unit        String    @default("COP por persona")
+  features    String    @db.Text
+  duration    String?
+  isPopular   Boolean   @default(false)
+  orderNum    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  bookings    Booking[]
+}
+
+model AvailabilitySlot {
+  id        Int       @id @default(autoincrement())
+  date      DateTime
+  startTime String
+  endTime   String
+  slots     Int       @default(6)
+  createdAt DateTime  @default(now())
+}
+
+model Booking {
+  id          Int       @id @default(autoincrement())
+  customerId  Int
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  serviceId   Int?
+  service     Service?  @relation(fields: [serviceId], references: [id])
+  packageId   Int?
+  package     Package?  @relation(fields: [packageId], references: [id])
+  date        DateTime
+  startTime   String
+  persons     Int       @default(1)
+  status      String    @default("PENDING_VALIDATION")
+  notes       String?   @db.Text
+  accepted    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ContactLead {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String
+  email     String?
+  message   String?   @db.Text
+  createdAt DateTime  @default(now())
+}
