@@ -23,10 +23,10 @@ export function TacticalButton({
 
   const variants = {
     primary:
-      "bg-[#c4871a] text-[#080808] px-8 md:px-10 py-4 tactical-clip-lg hover:bg-[#d4a244] hover:-translate-y-0.5",
+      "bg-[#c4871a] text-[#080706] px-8 md:px-10 py-4 tactical-clip-lg hover:bg-[#d4a244] hover:-translate-y-0.5",
     outline:
-      "bg-transparent text-[#c8c8c8] border border-[#c4871a]/40 px-8 md:px-10 py-4 tactical-clip-lg hover:border-[#c4871a] hover:text-[#c4871a] hover:bg-[#c4871a]/7",
-    dark: "bg-[#080808] text-[#c4871a] px-8 md:px-10 py-4 tactical-clip-lg hover:bg-[#191919]",
+      "bg-transparent text-[#CFD1D4] border border-[#c4871a]/40 px-8 md:px-10 py-4 tactical-clip-lg hover:border-[#c4871a] hover:text-[#c4871a] hover:bg-[#c4871a]/7",
+    dark: "bg-[#080706] text-[#c4871a] px-8 md:px-10 py-4 tactical-clip-lg hover:bg-[#171513]",
     full: "w-full block px-4 py-3.5 text-sm",
   };
 

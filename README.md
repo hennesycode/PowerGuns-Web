@@ -6,13 +6,13 @@ Next.js + TypeScript + Tailwind CSS + shadcn/ui + Prisma + MySQL
 
 - Node.js 22+
 - Docker Desktop o MySQL 8.4+
-- npm
+- pnpm
 
 ## Setup rápido
 
 ```bash
 cp .env.example .env
-npm install
+pnpm install
 ```
 
 ## Base de datos
@@ -25,15 +25,15 @@ docker compose up -d mysql
 ```
 
 ```bash
-npx prisma generate
-npx prisma db push
-npx prisma db seed
+pnpm exec prisma generate
+pnpm exec prisma db push
+pnpm exec prisma db seed
 ```
 
 ## Desarrollo
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Abre [http://localhost:3000](http://localhost:3000)

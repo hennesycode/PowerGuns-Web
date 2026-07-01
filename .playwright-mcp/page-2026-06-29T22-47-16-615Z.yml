@@ -1,0 +1,250 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "Power Guns POWER GUNS POLÍGONO S.A.S" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "Power Guns" [ref=e6]
+        - generic [ref=e7]:
+          - text: POWER GUNS
+          - text: POLÍGONO S.A.S
+      - generic [ref=e8]:
+        - button "Abrir carrito" [ref=e9]:
+          - img [ref=e10]
+        - button "Menú" [ref=e15]
+  - main [ref=e19]:
+    - generic [ref=e27]:
+      - generic [ref=e28]: Polígono de Tiro Certificado — Villavicencio, Meta
+      - generic [ref=e29]: Polígono de Tiro Certificado — Villavicencio, Meta
+    - generic [ref=e33]:
+      - generic [ref=e34]:
+        - generic [ref=e35]: 4+
+        - generic [ref=e36]: Estaciones de Tiro
+      - generic [ref=e37]:
+        - generic [ref=e38]: 25m
+        - generic [ref=e39]: Distancia Máxima
+      - generic [ref=e40]:
+        - generic [ref=e41]: 15+
+        - generic [ref=e42]: Calibres Disponibles
+      - generic [ref=e43]:
+        - generic [ref=e44]: 100%
+        - generic [ref=e45]: Certificado & Legal
+    - generic [ref=e50]:
+      - generic [ref=e51]:
+        - generic: "01"
+        - heading "POWER GUNS POLIGONO" [level=2] [ref=e52]
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - img [ref=e55]
+            - generic [ref=e58]:
+              - generic [ref=e59]: Dirección
+              - generic [ref=e60]: "Calle 34 #41-32 Barzal Alto"
+          - generic [ref=e61]:
+            - img [ref=e62]
+            - generic [ref=e65]:
+              - generic [ref=e66]: Correo
+              - link "poligonopowerguns@gmail.com" [ref=e67] [cursor=pointer]:
+                - /url: mailto:poligonopowerguns@gmail.com
+          - generic [ref=e68]:
+            - img [ref=e69]
+            - generic [ref=e71]:
+              - generic [ref=e72]: Teléfono
+              - link "3057138140" [ref=e73] [cursor=pointer]:
+                - /url: tel:3057138140
+      - generic [ref=e74]:
+        - generic: "02"
+        - heading "HORARIO DE ATENCIÓN" [level=2] [ref=e75]
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - generic [ref=e78]:
+              - img [ref=e79]
+              - generic [ref=e82]: Lun – Sáb
+            - generic [ref=e83]: 8:00 am – 6:00 pm
+          - generic [ref=e84]:
+            - generic [ref=e85]:
+              - img [ref=e86]
+              - generic [ref=e88]: Domingo y Festivos
+            - generic [ref=e89]: Cerrado
+    - generic [ref=e94]:
+      - generic [ref=e95]: Servicios
+      - heading "NUESTROS SERVICIOS PROFESIONALES" [level=2] [ref=e97]
+      - paragraph [ref=e98]: Entrenamientos, certificaciones y experiencias diseñadas para llevar tu práctica al siguiente nivel.
+    - generic [ref=e103]:
+      - heading "ACERCA DE NUESTRO POLÍGONO" [level=2] [ref=e105]:
+        - generic [ref=e106]: ACERCA DE
+        - generic [ref=e107]: NUESTRO POLÍGONO
+      - paragraph [ref=e112]: Power Guns es un polígono de armas cortas en recinto cerrado, especializado en entrenamiento táctico y práctica con armas de fuego, traumáticas y ejercicios virtuales. Ofrecemos un ambiente seguro, profesional y controlado para personas naturales, departamentos de seguridad y empresas de seguridad privada.
+      - generic [ref=e113]:
+        - generic [ref=e114]:
+          - generic: "01"
+          - img [ref=e117]
+          - heading "CERTIFICADO PARA ADQUISICIÓN DE ARMA" [level=3] [ref=e120]
+          - paragraph [ref=e121]: Como polígono Tipo Uno (1), se expiden certificados para el manejo de armas para personas naturales y ejercicios defensivos.
+        - generic [ref=e122]:
+          - generic: "02"
+          - img [ref=e125]
+          - heading "POLÍGONO POWER GUNS" [level=3] [ref=e129]
+          - paragraph [ref=e130]: Pon a prueba tus habilidades en nuestro centro de entrenamiento, simulador virtual y área de tiro cubierta para práctica libre o deportiva.
+        - generic [ref=e131]:
+          - generic: "03"
+          - img [ref=e134]
+          - heading "OTROS SERVICIOS" [level=3] [ref=e136]
+          - paragraph [ref=e137]: Certificación de tiro para personal de seguridad privada Cursos de defensa personal Cursos de seguridad Eventos
+      - link "MÁS ACERCA DE NOSOTROS" [ref=e139] [cursor=pointer]:
+        - /url: "#nosotros"
+    - generic [ref=e142]:
+      - heading "¿LISTO PARA ENTRAR AL RANGO?" [level=3] [ref=e143]:
+        - text: ¿LISTO PARA
+        - text: ENTRAR AL RANGO?
+      - link "RESERVAR AHORA" [ref=e144] [cursor=pointer]:
+        - /url: /reservas
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - generic [ref=e148]: Agenda tu sesión
+        - heading "HACER RESERVA" [level=2] [ref=e150]
+      - generic [ref=e151]:
+        - generic [ref=e152]:
+          - generic [ref=e153]:
+            - generic [ref=e154]: Nombre Completo
+            - textbox "Tu nombre completo" [ref=e155]
+          - generic [ref=e156]:
+            - generic [ref=e157]: Teléfono / WhatsApp
+            - textbox "300 000 0000" [ref=e158]
+          - generic [ref=e159]:
+            - generic [ref=e160]: Correo Electrónico
+            - textbox "correo@ejemplo.com" [ref=e161]
+          - generic [ref=e162]:
+            - generic [ref=e163]: Número de Personas
+            - combobox [ref=e164]:
+              - option "1" [selected]
+              - option "2"
+              - option "3"
+              - option "4"
+              - option "5"
+              - option "6"
+              - option "7"
+              - option "8"
+              - option "9"
+              - option "10"
+          - generic [ref=e165]:
+            - generic [ref=e166]: Fecha Preferida
+            - button "Seleccionar fecha" [ref=e167]
+          - generic [ref=e168]:
+            - generic [ref=e169]: Horario
+            - combobox [ref=e170]:
+              - generic [ref=e171]: Seleccionar turno
+              - img: ▼
+            - textbox [ref=e172]
+          - generic [ref=e173]:
+            - generic [ref=e174]: Paquete
+            - combobox [ref=e175]:
+              - generic [ref=e176]: Seleccionar paquete
+              - img: ▼
+            - textbox [ref=e177]
+          - generic [ref=e178]:
+            - generic [ref=e179]: Servicio
+            - combobox [ref=e180]:
+              - generic [ref=e181]: Tipo de actividad
+              - img: ▼
+            - textbox [ref=e182]
+          - generic [ref=e183]:
+            - generic [ref=e184]: Observaciones
+            - textbox "Cuéntanos qué necesitas o requerimientos especiales..." [ref=e185]
+          - generic [ref=e186]:
+            - checkbox "Acepto las normas de seguridad del polígono y confirmo que cumplo con los requisitos legales para el uso de armas de fuego en Colombia. Entiendo que mi reserva está sujeta a validación previa." [ref=e187]
+            - generic [ref=e188] [cursor=pointer]: Acepto las normas de seguridad del polígono y confirmo que cumplo con los requisitos legales para el uso de armas de fuego en Colombia. Entiendo que mi reserva está sujeta a validación previa.
+          - button "CONFIRMAR RESERVA" [ref=e190]
+        - generic [ref=e191]:
+          - paragraph [ref=e192]: Confirma tu turno directamente aquí respondemos en menos de 2 horas en horario de atención.
+          - paragraph [ref=e193]: Todas las reservas pasan por un proceso de validación. Recibirás confirmación por WhatsApp o correo electrónico.
+          - paragraph [ref=e194]: Debes presentar documento de identidad vigente el día de tu sesión.
+    - generic [ref=e196]:
+      - generic [ref=e197]:
+        - generic [ref=e198]: Contáctanos
+        - heading "HABLEMOS DIRECTO" [level=2] [ref=e200]
+      - generic [ref=e201]:
+        - generic [ref=e202]:
+          - img [ref=e204]
+          - generic [ref=e206]:
+            - generic [ref=e207]: WhatsApp / Teléfono
+            - generic [ref=e208]: +57 300 000 0000
+        - generic [ref=e209]:
+          - img [ref=e211]
+          - generic [ref=e214]:
+            - generic [ref=e215]: Ubicación
+            - generic [ref=e216]: Villavicencio, Meta Colombia
+        - generic [ref=e217]:
+          - img [ref=e219]
+          - generic [ref=e222]:
+            - generic [ref=e223]: Horario
+            - generic [ref=e224]: "Lun – Sáb: 8:00 am – 6:00 pm Domingo y Festivos: Cerrado"
+  - contentinfo [ref=e225]:
+    - generic [ref=e226]:
+      - generic [ref=e228]:
+        - generic [ref=e229]:
+          - link "Power Guns POWER GUNS POLÍGONO S.A.S" [ref=e230] [cursor=pointer]:
+            - /url: /
+            - img "Power Guns" [ref=e232]
+            - generic [ref=e233]:
+              - text: POWER GUNS
+              - text: POLÍGONO S.A.S
+          - paragraph [ref=e234]: El polígono de tiro más completo de los Llanos Orientales. Seguridad, profesionalismo y la mejor experiencia de tiro deportivo en Villavicencio, Meta.
+        - generic [ref=e235]:
+          - heading "Servicios" [level=4] [ref=e236]
+          - list [ref=e237]:
+            - listitem [ref=e238]:
+              - link "Tiro con Pistola" [ref=e239] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e240]:
+              - link "Tiro con Rifle" [ref=e241] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e242]:
+              - link "Defensa Personal" [ref=e243] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e244]:
+              - link "Eventos Corporativos" [ref=e245] [cursor=pointer]:
+                - /url: "#"
+        - generic [ref=e246]:
+          - heading "Paquetes" [level=4] [ref=e247]
+          - list [ref=e248]:
+            - listitem [ref=e249]:
+              - link "Iniciación" [ref=e250] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e251]:
+              - link "Táctico" [ref=e252] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e253]:
+              - link "Elite" [ref=e254] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e255]:
+              - link "Grupal / Evento" [ref=e256] [cursor=pointer]:
+                - /url: "#"
+        - generic [ref=e257]:
+          - heading "Información" [level=4] [ref=e258]
+          - list [ref=e259]:
+            - listitem [ref=e260]:
+              - link "Nosotros" [ref=e261] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e262]:
+              - link "Seguridad y Normas" [ref=e263] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e264]:
+              - link "Galería" [ref=e265] [cursor=pointer]:
+                - /url: "#"
+            - listitem [ref=e266]:
+              - link "Política de Privacidad" [ref=e267] [cursor=pointer]:
+                - /url: "#"
+      - generic [ref=e268]:
+        - paragraph [ref=e269]: © 2026 Power Guns Polígono S.A.S. · Villavicencio, Meta, Colombia
+        - generic [ref=e270]:
+          - link "Instagram" [ref=e271] [cursor=pointer]:
+            - /url: "#"
+            - generic [ref=e272]: I
+          - link "Facebook" [ref=e273] [cursor=pointer]:
+            - /url: "#"
+            - generic [ref=e274]: F
+          - link "WhatsApp" [ref=e275] [cursor=pointer]:
+            - /url: "#"
+            - generic [ref=e276]: W
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e282] [cursor=pointer]:
+    - img [ref=e283]

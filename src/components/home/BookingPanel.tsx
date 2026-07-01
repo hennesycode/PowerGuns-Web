@@ -1,5 +1,6 @@
 "use client";
 
+import { SiteShell } from "@/components/shared/SiteShell";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -65,11 +66,11 @@ export function BookingPanel() {
   };
 
   const inputClass =
-    "bg-[#191919] border-[#c4871a]/18 text-white font-sans text-sm py-3 px-4 w-full outline-none focus:border-[#c4871a] transition-colors placeholder:text-[#8a8a8a]/60 rounded-none";
+    "bg-[#171513] border-[#c4871a]/18 text-white font-sans text-sm py-3 px-4 w-full outline-none focus:border-[#c4871a] transition-colors placeholder:text-[#B2AAA7]/60 rounded-none";
 
   return (
-    <section id="reservar" className="section-padding">
-      <div className="mx-auto max-w-7xl">
+    <section id="reservar" className="py-16 md:py-24">
+      <SiteShell>
         <SectionHeader
           eyebrow="Agenda tu sesión"
           title={<>HACER <span className="text-[#c4871a]">RESERVA</span></>}
@@ -145,19 +146,19 @@ export function BookingPanel() {
                     className={cn(
                       inputClass,
                       "flex items-center text-left",
-                      !date && "text-[#8a8a8a]/60"
+                      !date && "text-[#B2AAA7]/60"
                     )}
                   >
                     {date ? format(date, "PPP", { locale: es }) : "Seleccionar fecha"}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-[#191919] border-[#c4871a]/18">
+                <PopoverContent className="w-auto p-0 bg-[#171513] border-[#c4871a]/18">
                   <Calendar
                     mode="single"
                     selected={date}
                     onSelect={setDate}
                     disabled={{ before: new Date() }}
-                    className="bg-[#191919] text-white"
+                    className="bg-[#171513] text-white"
                   />
                 </PopoverContent>
               </Popover>
@@ -172,7 +173,7 @@ export function BookingPanel() {
                 <SelectTrigger className={cn(inputClass, "h-auto")}>
                   <SelectValue placeholder="Seleccionar turno" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#191919] border-[#c4871a]/18 text-white">
+                <SelectContent className="bg-[#171513] border-[#c4871a]/18 text-white">
                   {TIME_SLOTS.map((s) => (
                     <SelectItem key={s.start} value={`${s.start}-${s.end}`}>
                       {s.label}
@@ -191,7 +192,7 @@ export function BookingPanel() {
                 <SelectTrigger className={cn(inputClass, "h-auto")}>
                   <SelectValue placeholder="Seleccionar paquete" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#191919] border-[#c4871a]/18 text-white">
+                <SelectContent className="bg-[#171513] border-[#c4871a]/18 text-white">
                   <SelectItem value="1">Iniciación — $85.000</SelectItem>
                   <SelectItem value="2">Táctico — $165.000</SelectItem>
                   <SelectItem value="3">Elite — $280.000</SelectItem>
@@ -209,7 +210,7 @@ export function BookingPanel() {
                 <SelectTrigger className={cn(inputClass, "h-auto")}>
                   <SelectValue placeholder="Tipo de actividad" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#191919] border-[#c4871a]/18 text-white">
+                <SelectContent className="bg-[#171513] border-[#c4871a]/18 text-white">
                   <SelectItem value="1">Tiro con Pistola</SelectItem>
                   <SelectItem value="2">Tiro con Rifle</SelectItem>
                   <SelectItem value="3">Defensa Personal</SelectItem>
@@ -241,7 +242,7 @@ export function BookingPanel() {
                 onChange={(e) => update("acceptedTerms", e.target.checked)}
                 className="mt-1 accent-[#c4871a]"
               />
-              <label htmlFor="terms" className="text-sm text-[#8a8a8a] leading-relaxed cursor-pointer">
+              <label htmlFor="terms" className="text-sm text-[#B2AAA7] leading-relaxed cursor-pointer">
                 Acepto las normas de seguridad del polígono y confirmo que cumplo con los requisitos
                 legales para el uso de armas de fuego en Colombia. Entiendo que mi reserva está sujeta
                 a validación previa.
@@ -253,7 +254,7 @@ export function BookingPanel() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#c4871a] text-[#080808] font-heading font-bold text-[15px] tracking-[.14em] uppercase py-5 hover:bg-[#d4a244] transition-colors rounded-none"
+                className="w-full bg-[#c4871a] text-[#080706] font-heading font-bold text-[15px] tracking-[.14em] uppercase py-5 hover:bg-[#d4a244] transition-colors rounded-none"
               >
                 {loading ? "ENVIANDO..." : "CONFIRMAR RESERVA"}
               </Button>
@@ -261,21 +262,21 @@ export function BookingPanel() {
           </div>
 
           {/* Side info */}
-          <div className="text-sm text-[#8a8a8a] leading-relaxed space-y-4">
+          <div className="text-sm text-[#B2AAA7] leading-relaxed space-y-4">
             <p>
               Confirma tu turno directamente aquí respondemos en menos de 2 horas en horario de
               atención.
             </p>
-            <p className="text-xs text-[#8a8a8a]/60 mt-4">
+            <p className="text-xs text-[#B2AAA7]/60 mt-4">
               Todas las reservas pasan por un proceso de validación. Recibirás confirmación por
               WhatsApp o correo electrónico.
             </p>
-            <p className="text-xs text-[#8a8a8a]/60">
+            <p className="text-xs text-[#B2AAA7]/60">
               Debes presentar documento de identidad vigente el día de tu sesión.
             </p>
           </div>
         </form>
-      </div>
+      </SiteShell>
     </section>
   );
 }

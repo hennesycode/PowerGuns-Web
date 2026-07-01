@@ -18,7 +18,7 @@ export function SectionHeader({ eyebrow, title, description, className }: Sectio
         {title}
       </h2>
       {description && (
-        <p className="mt-3.5 text-sm text-[#8a8a8a] max-w-[480px]">{description}</p>
+        <p className="mt-3.5 text-sm text-[#B2AAA7] max-w-[480px]">{description}</p>
       )}
     </div>
   );

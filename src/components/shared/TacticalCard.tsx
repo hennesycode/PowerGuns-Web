@@ -9,7 +9,7 @@ export function TacticalCard({ children, className }: TacticalCardProps) {
   return (
     <div
       className={cn(
-        "bg-[#191919] border border-[#c4871a]/8 p-6 md:p-10 relative overflow-hidden transition-all duration-300 hover:bg-[#222222] hover:border-[#c4871a]/20 group",
+        "bg-[#171513] border border-[#c4871a]/8 p-6 md:p-10 relative overflow-hidden transition-all duration-300 hover:bg-[#26231F] hover:border-[#c4871a]/20 group",
         className
       )}
     >

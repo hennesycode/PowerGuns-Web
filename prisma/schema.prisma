@@ -7,6 +7,56 @@ datasource db {
   provider = "mysql"
 }
 
+enum IdentificationType {
+  cedula
+  pasaporte
+  cedula_extranjeria
+}
+
+enum UserRole {
+  administrador
+  finanzas
+  editor
+  cliente
+  instructor
+}
+
+enum ReservationStatus {
+  pending
+  in_review
+  confirmed
+  completed
+}
+
+model User {
+  id                   Int                @id @default(autoincrement())
+  username             String             @unique
+  firstName            String
+  lastName             String
+  email                String             @unique
+  identificationType   IdentificationType
+  identificationNumber String             @unique
+  role                 UserRole           @default(cliente)
+  passwordHash         String
+  isActive             Boolean            @default(true)
+  avatarUrl            String?
+  lastLoginAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  loginAttempts        LoginAttempt[]
+  reservations         Reservation[]
+}
+
+model LoginAttempt {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  email     String?
+  ipAddress String?
+  success   Boolean
+  createdAt DateTime @default(now())
+}
+
 model Customer {
   id        Int       @id @default(autoincrement())
   name      String
@@ -76,4 +126,220 @@ model ContactLead {
   email     String?
   message   String?   @db.Text
   createdAt DateTime  @default(now())
+}
+
+enum DiscountType {
+  none
+  percentage
+  fixed
+}
+
+model TrainingService {
+  id                Int           @id @default(autoincrement())
+  name              String
+  title             String
+  slug              String        @unique
+  mainImageUrl      String
+  mainImageKey      String
+  shortDescription  String
+  longDescription   String        @db.Text
+  seoTitle          String?
+  seoDescription    String?
+  seoKeywords       String?   @db.Text
+  tags              String?   @db.Text
+  price             Decimal       @db.Decimal(10, 2)
+  discountType      DiscountType  @default(none)
+  discountValue     Decimal?      @db.Decimal(10, 2)
+  finalPrice        Decimal       @db.Decimal(10, 2)
+  durationMinutes   Int
+  includes          String        @db.Text
+  isActive          Boolean       @default(true)
+  isFeatured        Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  images            TrainingServiceImage[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model TrainingServiceImage {
+  id                 Int             @id @default(autoincrement())
+  serviceId          Int
+  service            TrainingService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  imageUrl           String
+  imageKey           String
+  altText            String?
+  sortOrder          Int             @default(0)
+  createdAt          DateTime        @default(now())
+
+  @@index([serviceId])
+}
+
+model Coupon {
+  id              String       @id @default(cuid())
+  code            String       @unique
+  discountType    DiscountType
+  discountValue   Int
+  isActive        Boolean      @default(true)
+  startsAt        DateTime?
+  expiresAt       DateTime?
+  maxUses         Int?
+  usedCount       Int          @default(0)
+  minimumSubtotal Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model BusinessHour {
+  id        String @id @default(cuid())
+  dayOfWeek Int    @unique
+  dayName   String
+  isOpen    Boolean @default(false)
+  slots     BusinessHourSlot[]
+
+  @@index([dayOfWeek])
+}
+
+model BusinessHourSlot {
+  id             String       @id @default(cuid())
+  businessHourId String
+  businessHour   BusinessHour @relation(fields: [businessHourId], references: [id], onDelete: Cascade)
+  openTime       String
+  closeTime      String
+  sortOrder      Int          @default(0)
+
+  @@index([businessHourId])
+}
+
+model Reservation {
+  id                   String            @id @default(cuid())
+  reservationCode      String            @unique
+
+  userId               Int?
+  user                 User?             @relation(fields: [userId], references: [id])
+
+  firstName            String
+  lastName             String
+  identificationType   String
+  identificationNumber String
+  email                String
+  phone                String
+  address              String
+  country              String            @default("Colombia")
+  department           String
+  city                 String
+
+  reservationDate      DateTime
+  reservationTime      String
+  notes                String?           @db.Text
+
+  status               ReservationStatus @default(pending)
+
+  subtotal             Int
+  discount             Int               @default(0)
+  total                Int
+  couponCode           String?
+
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  items                ReservationItem[]
+
+  @@unique([reservationDate, reservationTime])
+  @@index([reservationDate])
+  @@index([status])
+  @@index([email])
+  @@index([identificationNumber])
+  @@index([userId])
+}
+
+model ReservationItem {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  serviceId     Int
+  serviceTitle  String
+  serviceSlug   String?
+  imageUrl      String?
+  unitPrice     Int
+  quantity      Int
+  total         Int
+
+  createdAt     DateTime    @default(now())
+
+  @@index([reservationId])
+  @@index([serviceId])
+}
+
+model InventoryCategory {
+  id          String             @id @default(cuid())
+  name        String
+  slug        String             @unique
+  description String?
+  isActive    Boolean            @default(true)
+  sortOrder   Int                @default(0)
+
+  parentId    String?
+  parent      InventoryCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    InventoryCategory[] @relation("CategoryHierarchy")
+
+  products    InventoryProduct[]
+
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([parentId])
+}
+
+model InventoryProduct {
+  id          String                    @id @default(cuid())
+  name        String
+  slug        String
+  sku         String?                   @unique
+  description String?
+  quantity    Int                       @default(0)
+  minStock    Int                       @default(0)
+  location    String?
+  isActive    Boolean                   @default(true)
+
+  imageUrl    String?
+  imageKey    String?
+  imageAlt    String?
+
+  categoryId  String
+  category    InventoryCategory         @relation(fields: [categoryId], references: [id])
+
+  history     InventoryProductHistory[]
+
+  deletedAt   DateTime?
+
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  @@index([categoryId])
+  @@index([name])
+  @@index([sku])
+  @@index([isActive])
+}
+
+model InventoryProductHistory {
+  id            String           @id @default(cuid())
+
+  productId     String
+  product       InventoryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  action        String
+  field         String?
+  oldValue      String?
+  newValue      String?
+  note          String?
+
+  changedByName String?
+
+  createdAt     DateTime         @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
 }

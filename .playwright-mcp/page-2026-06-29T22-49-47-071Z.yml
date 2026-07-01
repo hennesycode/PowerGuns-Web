@@ -1,0 +1,106 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e490]:
+    - link "Volver al inicio" [ref=e492] [cursor=pointer]:
+      - /url: /
+      - img [ref=e493]
+      - text: Volver al inicio
+    - link "Power Guns POWER GUNS Reserva de servicios" [ref=e496] [cursor=pointer]:
+      - /url: /
+      - img "Power Guns" [ref=e498]
+      - generic [ref=e499]: POWER GUNS
+      - paragraph [ref=e500]: Reserva de servicios
+    - generic [ref=e502]:
+      - generic [ref=e504]:
+        - generic [ref=e505]:
+          - generic [ref=e506]:
+            - generic [ref=e507]:
+              - paragraph [ref=e508]: Paso 3 de 3
+              - heading "Confirmación y pago" [level=2] [ref=e661]
+            - button "Limpiar formulario" [ref=e510]
+          - generic "Progreso de la reserva" [ref=e511]:
+            - generic [ref=e513]:
+              - button "1 Datos" [ref=e514]:
+                - generic [ref=e515]: "1"
+                - generic [ref=e516]: Datos
+              - button "2 Fecha" [ref=e517]:
+                - generic [ref=e518]: "2"
+                - generic [ref=e519]: Fecha
+              - button "3 Pago" [ref=e520]:
+                - generic [ref=e521]: "3"
+                - generic [ref=e522]: Pago
+        - generic [ref=e663]:
+          - generic [ref=e664]:
+            - generic [ref=e665]:
+              - paragraph [ref=e666]: Cliente
+              - paragraph [ref=e667]: Carlos Andres Mendez Rojas
+              - paragraph [ref=e668]: carlos@example.com
+              - paragraph [ref=e669]: 🇨🇴 +57 3057138140
+            - generic [ref=e670]:
+              - paragraph [ref=e671]: Fecha y hora
+              - paragraph [ref=e672]: lunes, 29 de junio de 2026
+              - paragraph [ref=e673]: 8:00 AM
+          - generic [ref=e674]:
+            - paragraph [ref=e675]: Ubicación
+            - paragraph [ref=e676]: "Calle 1 # 2-3"
+            - paragraph [ref=e677]: Villavicencio, Meta, Colombia
+          - generic [ref=e678]:
+            - paragraph [ref=e679]: Notas adicionales
+            - paragraph [ref=e680]: Prefiero horario en la mañana.
+          - generic [ref=e681]:
+            - generic [ref=e682]:
+              - paragraph [ref=e683]: Servicios seleccionados
+              - generic [ref=e684]: 1 item
+            - generic [ref=e686]:
+              - generic [ref=e687]:
+                - paragraph [ref=e688]: Tiro Avanzado Combinado
+                - paragraph [ref=e689]: 1 x $ 272.000
+              - generic [ref=e690]: $ 272.000
+            - generic [ref=e691]:
+              - generic [ref=e692]:
+                - generic [ref=e693]: Subtotal
+                - generic [ref=e694]: $ 272.000
+              - generic [ref=e695]:
+                - generic [ref=e696]: Total
+                - generic [ref=e697]: $ 272.000
+          - generic [ref=e698]:
+            - paragraph [ref=e699]: Métodos de pago próximamente disponibles.
+            - paragraph [ref=e700]: En el siguiente paso se habilitarán las opciones de pago.
+        - generic [ref=e570]:
+          - button "Atrás" [ref=e660]
+          - button "Confirmar reserva" [ref=e701]
+      - complementary "Resumen de reserva" [ref=e573]:
+        - heading "Tu reserva" [level=2] [ref=e574]
+        - paragraph [ref=e575]: Servicios seleccionados
+        - generic [ref=e577]:
+          - img "Tiro Avanzado Combinado" [ref=e579]
+          - generic [ref=e580]:
+            - heading "Tiro Avanzado Combinado" [level=3] [ref=e581]
+            - paragraph [ref=e582]: $ 272.000 c/u
+            - generic [ref=e583]:
+              - generic [ref=e584]:
+                - button "Disminuir cantidad de Tiro Avanzado Combinado" [ref=e585]: "-"
+                - generic [ref=e586]: "1"
+                - button "Aumentar cantidad de Tiro Avanzado Combinado" [ref=e587]: +
+              - button "Eliminar Tiro Avanzado Combinado" [ref=e588]: Eliminar
+          - generic [ref=e589]: $ 272.000
+        - generic [ref=e591]:
+          - generic [ref=e592]: Cupón de descuento
+          - textbox "Cupón de descuento" [ref=e593]
+          - button "Aplicar" [disabled] [ref=e594]
+        - generic [ref=e595]:
+          - generic [ref=e596]:
+            - generic [ref=e597]: Subtotal
+            - generic [ref=e598]: $ 272.000
+          - generic [ref=e599]:
+            - generic [ref=e600]: Total
+            - generic [ref=e601]: $ 272.000
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e702]:
+        - button "Close toast" [ref=e703] [cursor=pointer]:
+          - img [ref=e704]
+        - img [ref=e708]
+        - generic [ref=e711]: Reserva lista para confirmar
+  - button "Open Next.js Dev Tools" [ref=e282] [cursor=pointer]:
+    - img [ref=e283]
+  - alert [ref=e489]: Reservar Turno — Power Guns Polígono S.A.S.

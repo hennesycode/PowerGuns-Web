@@ -1,27 +1,27 @@
 import { HeroSection } from "@/components/home/HeroSection";
 import { StatsBar } from "@/components/home/StatsBar";
-import { ServicesSection } from "@/components/home/ServicesSection";
-import { PackagesSection } from "@/components/home/PackagesSection";
-import { SafetySection } from "@/components/home/SafetySection";
-import { HowItWorksSection } from "@/components/home/HowItWorksSection";
-import { GallerySection } from "@/components/home/GallerySection";
+import { BulletScrollDivider } from "@/components/home/BulletScrollDivider";
+import { InfoSpotlightSection } from "@/components/home/InfoSpotlightSection";
+import { ServicesProfessionalSection } from "@/components/home/ServicesProfessionalSection";
+import { AboutSection } from "@/components/home/AboutSection";
 import { CTABand } from "@/components/home/CTABand";
-import { BookingPanel } from "@/components/home/BookingPanel";
-import { ContactSection } from "@/components/home/ContactSection";
+import { SafetyRulesSection } from "@/components/home/SafetyRulesSection";
+import { LocationSection } from "@/components/home/LocationSection";
+import { HomeFooter } from "@/components/home/HomeFooter";
 
 export default function HomePage() {
   return (
     <>
       <HeroSection />
       <StatsBar />
-      <ServicesSection />
-      <PackagesSection />
-      <SafetySection />
-      <HowItWorksSection />
-      <GallerySection />
+      <BulletScrollDivider />
+      <InfoSpotlightSection />
+      <ServicesProfessionalSection />
+      <AboutSection />
       <CTABand />
-      <BookingPanel />
-      <ContactSection />
+      <SafetyRulesSection />
+      <LocationSection />
+      <HomeFooter />
     </>
   );
 }

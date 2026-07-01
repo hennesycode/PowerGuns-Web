@@ -1,0 +1,95 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Volver al inicio" [ref=e4] [cursor=pointer]:
+      - /url: /
+      - img [ref=e5]
+      - text: Volver al inicio
+    - link "Power Guns POWER GUNS Reserva de servicios" [ref=e8] [cursor=pointer]:
+      - /url: /
+      - img "Power Guns" [ref=e10]
+      - generic [ref=e11]: POWER GUNS
+      - paragraph [ref=e12]: Reserva de servicios
+    - generic [ref=e14]:
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - paragraph [ref=e20]: Paso 1 de 3
+              - heading "Datos de reserva" [level=2] [ref=e21]
+            - button "Limpiar formulario" [ref=e22]
+          - generic "Progreso de la reserva" [ref=e23]:
+            - generic [ref=e25]:
+              - button "1 Datos" [ref=e26]:
+                - generic [ref=e27]: "1"
+                - generic [ref=e28]: Datos
+              - button "2 Fecha" [ref=e29]:
+                - generic [ref=e30]: "2"
+                - generic [ref=e31]: Fecha
+              - button "3 Pago" [ref=e32]:
+                - generic [ref=e33]: "3"
+                - generic [ref=e34]: Pago
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - generic [ref=e39]: Nombres *
+              - textbox "Nombres *" [ref=e40]:
+                - /placeholder: "Ej: Carlos Andrés"
+            - generic [ref=e41]:
+              - generic [ref=e42]: Apellidos *
+              - textbox "Apellidos *" [ref=e43]:
+                - /placeholder: "Ej: Méndez Rojas"
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - generic [ref=e46]: Tipo ID *
+              - combobox "Tipo ID *" [ref=e47]:
+                - option "Cédula" [selected]
+                - option "Pasaporte"
+                - option "Cédula extranjería"
+            - generic [ref=e48]:
+              - generic [ref=e49]: Número de identificación *
+              - textbox "Número de identificación *" [ref=e50]:
+                - /placeholder: "Ej: 1000000001"
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53]: Correo electrónico *
+              - textbox "Correo electrónico *" [ref=e54]:
+                - /placeholder: correo@ejemplo.com
+            - generic [ref=e55]:
+              - generic [ref=e56]: Número de teléfono *
+              - generic [ref=e57]:
+                - generic [ref=e58]:
+                  - generic [ref=e59]: 🇨🇴
+                  - generic [ref=e60]: "+57"
+                - textbox "Número de teléfono *" [ref=e61]:
+                  - /placeholder: "3057138140"
+              - paragraph [ref=e62]: Debe iniciar en 3 y tener exactamente 10 dígitos.
+          - generic [ref=e63]:
+            - generic [ref=e64]: Dirección completa *
+            - textbox "Dirección completa *" [ref=e65]:
+              - /placeholder: Calle, carrera, número, barrio, referencia
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - generic [ref=e68]: País
+              - textbox "País" [disabled] [ref=e69]: Colombia
+            - generic [ref=e70]:
+              - generic [ref=e71]: Departamento *
+              - button "Departamento" [ref=e73]:
+                - text: Seleccionar...
+                - img [ref=e74]
+            - generic [ref=e76]:
+              - generic [ref=e77]: Ciudad *
+              - button "Ciudad" [disabled] [ref=e79]:
+                - text: Primero departamento
+                - img [ref=e80]
+        - button "Siguiente" [ref=e83]
+      - complementary "Resumen de reserva" [ref=e85]:
+        - heading "Tu reserva" [level=2] [ref=e86]
+        - paragraph [ref=e87]: Servicios seleccionados
+        - generic [ref=e88]:
+          - img [ref=e89]
+          - paragraph [ref=e93]: No tienes servicios seleccionados
+          - link "Ver servicios" [ref=e94] [cursor=pointer]:
+            - /url: /#servicios
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e100] [cursor=pointer]:
+    - img [ref=e101]

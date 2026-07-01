@@ -11,20 +11,26 @@ export const SITE = {
 };
 
 export const NAV_LINKS = [
-  { label: "Servicios", href: "#servicios" },
+  { label: "Servicios", href: "/servicios" },
   { label: "Paquetes", href: "#paquetes" },
-  { label: "Nosotros", href: "#nosotros" },
+  { label: "Nosotros", href: "/nosotros" },
   { label: "Galería", href: "#galeria" },
   { label: "Contacto", href: "#contacto" },
 ];
 
 export const HOURS = {
   weekday: "Lun – Sáb: 8:00 am – 6:00 pm",
-  sunday: "Dom: 9:00 am – 3:00 pm",
+  sunday: "Domingo y Festivos: Cerrado",
+};
+
+export const CONTACT = {
+  address: "Calle 34 #41-32 Barzal Alto",
+  email: "poligonopowerguns@gmail.com",
+  phone: "3057138140",
 };
 
 export const STATS = [
-  { value: "8", suffix: "+", label: "Estaciones de Tiro" },
+  { value: "4", suffix: "+", label: "Estaciones de Tiro" },
   { value: "25", suffix: "m", label: "Distancia Máxima" },
   { value: "15", suffix: "+", label: "Calibres Disponibles" },
   { value: "100", suffix: "%", label: "Certificado & Legal" },

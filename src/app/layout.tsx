@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Barlow_Condensed, Rajdhani } from "next/font/google";
 import { Toaster } from "sonner";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { AdminShell } from "@/components/layout/AdminShell";
+import { CartProvider } from "@/context/CartContext";
+import { CartDrawer } from "@/components/cart/CartDrawer";
 import "./globals.css";
 
 const inter = Inter({
@@ -46,18 +47,20 @@ export default function RootLayout({
   return (
     <html
       lang="es"
+      data-scroll-behavior="smooth"
       className={`${inter.variable} ${barlowCondensed.variable} ${rajdhani.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col font-sans">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+      <body className="min-h-full flex flex-col font-sans bg-[#050403] text-[#F0F3F6]" suppressHydrationWarning>
+        <CartProvider>
+          <AdminShell>{children}</AdminShell>
+          <CartDrawer />
+        </CartProvider>
         <Toaster
-          position="bottom-right"
+          position="top-center"
           richColors
           closeButton
           toastOptions={{
-            style: { background: "#191919", color: "#f0f0f0", border: "1px solid rgba(196,135,26,.2)" },
+            style: { background: "#171513", color: "#F0F3F6", border: "1px solid rgba(196,135,26,.2)" },
           }}
         />
       </body>

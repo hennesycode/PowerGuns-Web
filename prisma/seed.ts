@@ -1,10 +1,32 @@
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import bcrypt from "bcryptjs";
+import "dotenv/config";
 
 const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  // Admin user seed (password: Admin123! - change after first login)
+  const adminHash = await bcrypt.hash("Admin123!", 12);
+  await prisma.user.upsert({
+    where: { email: "admin@powerguns.local" },
+    update: {},
+    create: {
+      username: "admin",
+      firstName: "Administrador",
+      lastName: "Power Guns",
+      email: "admin@powerguns.local",
+      identificationType: "cedula",
+      identificationNumber: "1000000001",
+      role: "administrador",
+      passwordHash: adminHash,
+      isActive: true,
+    },
+  });
+  console.log("Admin user created (email: admin@powerguns.local, password: Admin123!)");
+
+  //
   // Services
   await prisma.service.createMany({
     data: [
@@ -91,9 +113,39 @@ async function main() {
     }
   }
 
+  // Business hours - default
+  const businessHoursData = [
+    { dayOfWeek: 0, dayName: "Domingo", isOpen: false, slots: [] as Array<{ openTime: string; closeTime: string }> },
+    { dayOfWeek: 1, dayName: "Lunes", isOpen: true, slots: [{ openTime: "08:00", closeTime: "18:00" }] },
+    { dayOfWeek: 2, dayName: "Martes", isOpen: true, slots: [{ openTime: "08:00", closeTime: "18:00" }] },
+    { dayOfWeek: 3, dayName: "Miércoles", isOpen: true, slots: [{ openTime: "08:00", closeTime: "18:00" }] },
+    { dayOfWeek: 4, dayName: "Jueves", isOpen: true, slots: [{ openTime: "08:00", closeTime: "18:00" }] },
+    { dayOfWeek: 5, dayName: "Viernes", isOpen: true, slots: [{ openTime: "08:00", closeTime: "18:00" }] },
+    { dayOfWeek: 6, dayName: "Sábado", isOpen: true, slots: [{ openTime: "08:00", closeTime: "18:00" }] },
+  ];
+
+  for (const day of businessHoursData) {
+    const record = await prisma.businessHour.upsert({
+      where: { dayOfWeek: day.dayOfWeek },
+      create: { dayOfWeek: day.dayOfWeek, dayName: day.dayName, isOpen: day.isOpen },
+      update: { dayName: day.dayName, isOpen: day.isOpen },
+    });
+
+    if (day.isOpen && day.slots.length > 0) {
+      await prisma.businessHourSlot.createMany({
+        data: day.slots.map((slot, index) => ({
+          businessHourId: record.id,
+          openTime: slot.openTime,
+          closeTime: slot.closeTime,
+          sortOrder: index,
+        })),
+      });
+    }
+  }
+
   console.log("Seed completed.");
 }
 
 main()
   .catch((e) => { console.error(e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); pool.end(); });
+  .finally(async () => { await prisma.$disconnect(); });
