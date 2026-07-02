@@ -4,7 +4,20 @@ services:
     container_name: powerguns-app
     expose:
       - "3000"
-    env_file: .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+      - R2_REGION=${R2_REGION}
+      - R2_ENDPOINT=${R2_ENDPOINT}
+      - CLOUD_STORAGE_FOLDER=${CLOUD_STORAGE_FOLDER}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - NEXT_PUBLIC_COMPANY_NAME=${NEXT_PUBLIC_COMPANY_NAME}
+      - NEXT_PUBLIC_COMPANY_CITY=${NEXT_PUBLIC_COMPANY_CITY}
     networks:
       - dokploy-network
 
