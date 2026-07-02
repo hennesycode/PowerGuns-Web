@@ -7,7 +7,7 @@
     "preinstall": "npx only-allow pnpm",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint"
   },
   "dependencies": {
