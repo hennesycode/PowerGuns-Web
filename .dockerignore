@@ -1,0 +1,9 @@
+.env
+.env.example
+.next
+node_modules
+.git
+*.md
+.DS_Store
+*.pem
+.gitignore
