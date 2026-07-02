@@ -23,6 +23,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
+ENV DATABASE_URL="mysql://dummy:dummy@localhost:3306/dummy"
 
 # OpenSSL necesario para Prisma en runtime
 RUN apk add --no-cache openssl
