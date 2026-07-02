@@ -29,7 +29,7 @@ RUN apk add --no-cache openssl
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
-RUN corepack enable
+RUN corepack enable && pnpm --version
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -40,7 +40,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 COPY <<'EOF' start.sh
 #!/bin/sh
-node node_modules/.bin/prisma migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
+pnpm exec prisma migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
 exec node server.js
 EOF
 RUN chown nextjs:nodejs start.sh && chmod +x start.sh
