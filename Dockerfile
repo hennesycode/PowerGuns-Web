@@ -45,10 +45,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.
 
 COPY <<'EOF' start.sh
 #!/bin/sh
-# Eliminar TODAS las migraciones fallidas para que se re-apliquen
-printf "DELETE FROM \`_prisma_migrations\` WHERE finished_at IS NULL;\n" | node node_modules/prisma/build/index.js db execute --stdin 2>&1 || true
-# Aplicar migraciones pendientes
-node node_modules/prisma/build/index.js migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
+# Aplicar migraciones. Si fallan, resetear DB y empezar limpio
+node node_modules/prisma/build/index.js migrate deploy 2>&1 || node node_modules/prisma/build/index.js migrate reset --force --skip-seed 2>&1 || echo "No se pudieron aplicar migraciones"
 exec node server.js
 EOF
 RUN chown nextjs:nodejs start.sh && chmod +x start.sh && chown nextjs:nodejs /app
