@@ -29,6 +29,7 @@ RUN apk add --no-cache openssl
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
+RUN corepack enable
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -37,7 +38,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # node_modules completo para que Prisma (adapter, engine, driver) funcione en runtime
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
+COPY <<'EOF' start.sh
+#!/bin/sh
+node node_modules/.bin/prisma migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
+exec node server.js
+EOF
+RUN chown nextjs:nodejs start.sh && chmod +x start.sh
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
-CMD ["node", "server.js"]
+CMD ["sh", "/app/start.sh"]
