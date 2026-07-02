@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE `Reservation` (
+CREATE TABLE IF NOT EXISTS `Reservation` (
     `id` VARCHAR(191) NOT NULL,
     `reservationCode` VARCHAR(191) NOT NULL,
     `userId` INTEGER NULL,
@@ -35,7 +35,7 @@ CREATE TABLE `Reservation` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `ReservationItem` (
+CREATE TABLE IF NOT EXISTS `ReservationItem` (
     `id` VARCHAR(191) NOT NULL,
     `reservationId` VARCHAR(191) NOT NULL,
     `serviceId` INTEGER NOT NULL,
