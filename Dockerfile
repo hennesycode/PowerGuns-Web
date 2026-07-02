@@ -45,8 +45,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.
 
 COPY <<'EOF' start.sh
 #!/bin/sh
-# Limpiar migraciones fallidas para que se re-apliquen
-node -e "try{const m=require('mariadb');(async()=>{const p=m.createPool({connectionLimit:1,uri:process.env.DATABASE_URL});try{const c=await p.getConnection();await c.query('DELETE FROM _prisma_migrations WHERE finished_at IS NULL');c.end()}catch(e){}p.end()})().catch(()=>{})}catch(e){}" 2>/dev/null || true
+# Resolver migracion fallida para que migrate deploy la re-aplique
+node node_modules/prisma/build/index.js migrate resolve --rolled-back 20260629201444_fix_long_text_fields 2>/dev/null || true
 # Aplicar migraciones pendientes
 node node_modules/prisma/build/index.js migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
 exec node server.js
