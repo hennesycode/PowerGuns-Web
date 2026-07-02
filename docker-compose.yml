@@ -2,8 +2,8 @@ services:
   app:
     build: .
     container_name: powerguns-app
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       - DATABASE_URL=mysql://root:powerguns@mysql:3306/powerguns
     networks:
