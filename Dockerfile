@@ -41,7 +41,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 COPY <<'EOF' start.sh
 #!/bin/sh
-pnpm exec prisma migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
+node node_modules/prisma/build/index.js migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
 exec node server.js
 EOF
 RUN chown nextjs:nodejs start.sh && chmod +x start.sh && chown nextjs:nodejs /app
