@@ -45,8 +45,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.
 
 COPY <<'EOF' start.sh
 #!/bin/sh
-# Eliminar registro de migracion fallida para que migrate deploy la re-aplique
-printf "DELETE FROM \`_prisma_migrations\` WHERE migration_name = '20260629201444_fix_long_text_fields';\n" | node node_modules/prisma/build/index.js db execute --stdin 2>&1 || true
+# Eliminar TODAS las migraciones fallidas para que se re-apliquen
+printf "DELETE FROM \`_prisma_migrations\` WHERE finished_at IS NULL;\n" | node node_modules/prisma/build/index.js db execute --stdin 2>&1 || true
 # Aplicar migraciones pendientes
 node node_modules/prisma/build/index.js migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
 exec node server.js
