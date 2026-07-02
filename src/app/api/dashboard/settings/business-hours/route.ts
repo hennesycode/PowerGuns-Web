@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { z } from "zod/v4";
 import { businessHoursService } from "@/server/services/business-hours.service";
+import { activityService } from "@/server/services/activity.service";
 
 const ADMIN_ROLES = new Set(["administrador", "editor", "finanzas"]);
 
@@ -70,10 +71,39 @@ export async function PUT(request: Request) {
     }
 
     const hours = await businessHoursService.upsertAll(validation.data.days);
+
+    const openDays = validation.data.days.filter((d) => d.isOpen).map((d) => d.dayOfWeek);
+    activityService.logFromSession(session, {
+      action: "business_hours_updated",
+      entityType: "business_hours",
+      description: `Horarios actualizados — ${openDays.length} días abiertos`,
+      status: "success",
+      page: "/dashboard/configuracion",
+      section: "Configuración / Horarios",
+      metadata: {
+        openDays: validation.data.days.filter((d) => d.isOpen).map((d) => ({ day: d.dayOfWeek, slots: d.slots })),
+        closedDays: validation.data.days.filter((d) => !d.isOpen).map((d) => d.dayOfWeek),
+      },
+    });
+
     return NextResponse.json({ hours });
   } catch (error) {
     console.error("[PUT /api/dashboard/settings/business-hours]", error);
     const message = error instanceof Error ? error.message : "No se pudieron guardar los horarios";
+
+    const session = await getSession();
+    if (session && ADMIN_ROLES.has(session.role)) {
+      activityService.logFromSession(session, {
+        action: "business_hours_updated",
+        entityType: "business_hours",
+        description: `Error al actualizar horarios: ${message}`,
+        status: "error",
+        errorMessage: message,
+        page: "/dashboard/configuracion",
+        section: "Configuración / Horarios",
+      });
+    }
+
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

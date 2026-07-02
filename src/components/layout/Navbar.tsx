@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { NAV_LINKS } from "@/lib/constants";
 import { SiteShell } from "@/components/shared/SiteShell";
 import { CartButton } from "@/components/cart/CartButton";
-import { PackagesModal } from "@/components/shared/PackagesModal";
+
 
 const getInitials = (name = "") =>
   name
@@ -105,7 +105,7 @@ export function Navbar() {
   const pathname = usePathname();
   const [solid, setSolid] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [packagesModal, setPackagesModal] = useState(false);
+
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
@@ -154,22 +154,12 @@ export function Navbar() {
         <ul className="hidden lg:flex gap-8 items-center">
             {NAV_LINKS.map((link) => (
               <li key={link.href}>
-                {link.label === "Paquetes" ? (
-                  <button
-                    type="button"
-                    onClick={() => setPackagesModal(true)}
-                    className={desktopLinkClass(link.href)}
-                  >
-                    {link.label}
-                  </button>
-                ) : (
-                  <Link
-                    href={link.href}
-                    className={desktopLinkClass(link.href)}
-                  >
-                    {link.label}
-                  </Link>
-                )}
+                <Link
+                  href={link.href}
+                  className={desktopLinkClass(link.href)}
+                >
+                  {link.label}
+                </Link>
               </li>
             ))}
           </ul>
@@ -204,26 +194,13 @@ export function Navbar() {
           <ul className="flex flex-col gap-4">
             {NAV_LINKS.map((link) => (
               <li key={link.href}>
-                {link.label === "Paquetes" ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setPackagesModal(true);
-                    }}
-                    className={mobileLinkClass(link.href)}
-                  >
-                    {link.label}
-                  </button>
-                ) : (
-                  <Link
-                    href={link.href}
-                    onClick={() => setMenuOpen(false)}
-                    className={mobileLinkClass(link.href)}
-                  >
-                    {link.label}
-                  </Link>
-                )}
+                <Link
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={mobileLinkClass(link.href)}
+                >
+                  {link.label}
+                </Link>
               </li>
             ))}
             <li>
@@ -239,8 +216,6 @@ export function Navbar() {
         </SiteShell>
       )}
     </nav>
-
-      <PackagesModal open={packagesModal} onClose={() => setPackagesModal(false)} />
     </>
   );
 }

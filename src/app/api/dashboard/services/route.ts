@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { trainingService } from "@/server/services/training.service";
+import { activityService } from "@/server/services/activity.service";
 import { createServiceSchema } from "@/lib/validations/service";
 import { optimizeImageToWebp, validateImage } from "@/lib/image-optimizer";
 import {
@@ -117,12 +118,38 @@ export async function POST(request: Request) {
       galleryImages,
     );
 
+    activityService.logFromSession(session, {
+      action: "service_created",
+      entityType: "training_service",
+      entityId: String(service.id),
+      entityName: service.name,
+      description: `Servicio "${service.name}" creado — $${service.finalPrice.toLocaleString("es-CO")} COP`,
+      status: "success",
+      page: "/dashboard/servicios",
+      section: "Servicios",
+      metadata: { serviceName: service.name, price: service.finalPrice, isActive: service.isActive },
+    });
+
     return NextResponse.json(service, { status: 201 });
   } catch (error) {
     console.error("[POST /api/dashboard/services]", error);
     const message =
       error instanceof Error ? error.message : "Error al crear el servicio";
     const status = message.includes("Slug") ? 409 : 500;
+
+    const session = await getSession();
+    if (session) {
+      activityService.logFromSession(session, {
+        action: "service_created",
+        entityType: "training_service",
+        description: `Error al crear servicio: ${message}`,
+        status: "error",
+        errorMessage: message,
+        page: "/dashboard/servicios",
+        section: "Servicios",
+      });
+    }
+
     return NextResponse.json({ error: message }, { status });
   }
 }

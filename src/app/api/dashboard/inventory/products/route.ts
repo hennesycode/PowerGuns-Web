@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { inventoryService } from "@/server/services/inventory.service";
+import { activityService } from "@/server/services/activity.service";
 import { productSchema, productQuerySchema } from "@/lib/validations/inventory";
 
 export async function GET(request: Request) {
@@ -63,9 +64,35 @@ export async function POST(request: Request) {
 
     const changedByName = `${session.username}`;
     const product = await inventoryService.createProduct(validation.data, changedByName, image);
+
+    activityService.logFromSession(session, {
+      action: "product_created",
+      entityType: "inventory_product",
+      entityId: product.id,
+      entityName: product.name,
+      description: `Producto "${product.name}" creado en inventario`,
+      status: "success",
+      page: "/dashboard/inventario",
+      section: "Inventario / Productos",
+      metadata: { productName: product.name, sku: product.sku, quantity: product.quantity, categoryId: product.categoryId },
+    });
+
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
     console.error("[POST /api/dashboard/inventory/products]", error);
-    return NextResponse.json({ error: "No se pudo crear el producto" }, { status: 400 });
+    const message = "No se pudo crear el producto";
+    const session = await getSession();
+    if (session) {
+      activityService.logFromSession(session, {
+        action: "product_created",
+        entityType: "inventory_product",
+        description: `Error al crear producto: ${message}`,
+        status: "error",
+        errorMessage: error instanceof Error ? error.message : message,
+        page: "/dashboard/inventario",
+        section: "Inventario / Productos",
+      });
+    }
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { dashboardReservationSchema, reservationQuerySchema } from "@/lib/validations/reservation";
 import { reservationService } from "@/server/services/reservation.service";
+import { activityService } from "@/server/services/activity.service";
 
 const ADMIN_ROLES = new Set(["administrador", "editor", "finanzas"]);
 
@@ -49,11 +50,38 @@ export async function POST(request: Request) {
     }
 
     const reservation = await reservationService.create(validation.data);
+
+    activityService.logFromSession(auth.session, {
+      action: "reservation_created",
+      entityType: "reservation",
+      entityId: reservation.id,
+      entityName: reservation.reservationCode,
+      description: `Reserva ${reservation.reservationCode} creada por ${reservation.firstName} ${reservation.lastName} — ${reservation.total.toLocaleString("es-CO")} COP`,
+      status: "success",
+      page: "/dashboard/reservas",
+      section: "Reservas",
+      metadata: { reservationCode: reservation.reservationCode, total: reservation.total, status: reservation.status, items: reservation.services.length },
+    });
+
     return NextResponse.json(reservation, { status: 201 });
   } catch (error) {
     console.error("[POST /api/dashboard/reservations]", error);
     const message = error instanceof Error ? error.message : "No se pudo crear la reserva";
     const status = message.includes("ya no está disponible") ? 409 : 400;
+
+    const auth = await requireAdmin();
+    if (!("error" in auth)) {
+      activityService.logFromSession(auth.session, {
+        action: "reservation_created",
+        entityType: "reservation",
+        description: `Error al crear reserva: ${message}`,
+        status: "error",
+        errorMessage: message,
+        page: "/dashboard/reservas",
+        section: "Reservas",
+      });
+    }
+
     return NextResponse.json({ error: message }, { status });
   }
 }

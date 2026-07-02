@@ -324,6 +324,38 @@ model InventoryProduct {
   @@index([isActive])
 }
 
+model ActivityLog {
+  id                  String     @id @default(cuid())
+  action              String
+  entityType          String
+  entityId            String?
+  entityName          String?
+
+  userId              Int?
+  userFullName        String
+  userUsername        String
+  userIdentificationType String
+  userIdentificationNumber String
+
+  description         String     @db.Text
+  status              String     @default("success")
+  errorMessage        String?    @db.Text
+
+  page                String?
+  section             String?
+
+  metadata            String?    @db.Text
+
+  createdAt           DateTime   @default(now())
+
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([status])
+}
+
 model InventoryProductHistory {
   id            String           @id @default(cuid())
 

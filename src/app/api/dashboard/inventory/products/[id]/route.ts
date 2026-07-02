@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { inventoryService } from "@/server/services/inventory.service";
+import { activityService } from "@/server/services/activity.service";
 import { productSchema } from "@/lib/validations/inventory";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -52,9 +53,33 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       }, 0);
     }
 
+    activityService.logFromSession(session, {
+      action: "product_updated",
+      entityType: "inventory_product",
+      entityId: id,
+      entityName: product.name,
+      description: `Producto "${product.name}" actualizado en inventario`,
+      status: "success",
+      page: "/dashboard/inventario",
+      section: "Inventario / Productos",
+      metadata: { productName: product.name, hasNewImage: !!image },
+    });
+
     return NextResponse.json(product);
   } catch (error) {
     console.error("[PUT /api/dashboard/inventory/products/[id]]", error);
+    const session = await getSession();
+    if (session) {
+      activityService.logFromSession(session, {
+        action: "product_updated",
+        entityType: "inventory_product",
+        description: `Error al actualizar producto`,
+        status: "error",
+        errorMessage: error instanceof Error ? error.message : "Error desconocido",
+        page: "/dashboard/inventario",
+        section: "Inventario / Productos",
+      });
+    }
     return NextResponse.json({ error: "No se pudo actualizar el producto" }, { status: 400 });
   }
 }
@@ -64,10 +89,39 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     const { id } = await params;
+
+    const existing = await inventoryService.getProduct(id);
     const changedByName = `${session.username}`;
     await inventoryService.deleteProduct(id, changedByName);
+
+    if (existing) {
+      activityService.logFromSession(session, {
+        action: "product_deleted",
+        entityType: "inventory_product",
+        entityId: id,
+        entityName: existing.name,
+        description: `Producto "${existing.name}" eliminado del inventario`,
+        status: "success",
+        page: "/dashboard/inventario",
+        section: "Inventario / Productos",
+        metadata: { productName: existing.name, sku: existing.sku },
+      });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
+    const session = await getSession();
+    if (session) {
+      activityService.logFromSession(session, {
+        action: "product_deleted",
+        entityType: "inventory_product",
+        description: `Error al eliminar producto`,
+        status: "error",
+        errorMessage: error instanceof Error ? error.message : "Error desconocido",
+        page: "/dashboard/inventario",
+        section: "Inventario / Productos",
+      });
+    }
     return NextResponse.json({ error: "No se pudo eliminar el producto" }, { status: 400 });
   }
 }

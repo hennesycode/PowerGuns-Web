@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { trainingService } from "@/server/services/training.service";
+import { activityService } from "@/server/services/activity.service";
 import { updateServiceSchema } from "@/lib/validations/service";
 import { optimizeImageToWebp, validateImage } from "@/lib/image-optimizer";
 import {
@@ -155,12 +156,38 @@ export async function PUT(
       await deleteFromR2Silent(key);
     }
 
+    activityService.logFromSession(session, {
+      action: "service_updated",
+      entityType: "training_service",
+      entityId: id,
+      entityName: updated.name,
+      description: `Servicio "${updated.name}" actualizado`,
+      status: "success",
+      page: "/dashboard/servicios",
+      section: "Servicios",
+      metadata: { serviceName: updated.name, hasNewMainImage: !!mainImage, galleryImagesAdded: galleryImages.length },
+    });
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error("[PUT /api/dashboard/services/[id]]", error);
     const message =
       error instanceof Error ? error.message : "Error al actualizar el servicio";
     const status = message.includes("no encontrado") ? 404 : 500;
+
+    const session = await getSession();
+    if (session) {
+      activityService.logFromSession(session, {
+        action: "service_updated",
+        entityType: "training_service",
+        description: `Error al actualizar servicio: ${message}`,
+        status: "error",
+        errorMessage: message,
+        page: "/dashboard/servicios",
+        section: "Servicios",
+      });
+    }
+
     return NextResponse.json({ error: message }, { status });
   }
 }
@@ -193,12 +220,38 @@ export async function DELETE(
       await deleteFromR2Silent(img.imageKey);
     }
 
+    activityService.logFromSession(session, {
+      action: "service_deleted",
+      entityType: "training_service",
+      entityId: id,
+      entityName: existing.name,
+      description: `Servicio "${existing.name}" eliminado`,
+      status: "success",
+      page: "/dashboard/servicios",
+      section: "Servicios",
+      metadata: { serviceName: existing.name, slug: existing.slug },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[DELETE /api/dashboard/services/[id]]", error);
     const message =
       error instanceof Error ? error.message : "Error al eliminar el servicio";
     const status = message.includes("no encontrado") ? 404 : 500;
+
+    const session = await getSession();
+    if (session) {
+      activityService.logFromSession(session, {
+        action: "service_deleted",
+        entityType: "training_service",
+        description: `Error al eliminar servicio: ${message}`,
+        status: "error",
+        errorMessage: message,
+        page: "/dashboard/servicios",
+        section: "Servicios",
+      });
+    }
+
     return NextResponse.json({ error: message }, { status });
   }
 }

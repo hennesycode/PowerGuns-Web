@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { inventoryService } from "@/server/services/inventory.service";
+import { activityService } from "@/server/services/activity.service";
 import { categorySchema } from "@/lib/validations/inventory";
 
 export async function GET(request: Request) {
@@ -31,9 +32,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validation.error.issues[0]?.message ?? "Datos inválidos" }, { status: 400 });
     }
     const category = await inventoryService.createCategory(validation.data);
+
+    activityService.logFromSession(session, {
+      action: "category_created",
+      entityType: "inventory_category",
+      entityId: category.id,
+      entityName: category.name,
+      description: `Categoría "${category.name}" creada en inventario`,
+      status: "success",
+      page: "/dashboard/inventario",
+      section: "Inventario / Categorías",
+      metadata: { categoryName: category.name, isActive: category.isActive },
+    });
+
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
     console.error("[POST /api/dashboard/inventory/categories]", error);
+    const session = await getSession();
+    if (session) {
+      activityService.logFromSession(session, {
+        action: "category_created",
+        entityType: "inventory_category",
+        description: `Error al crear categoría`,
+        status: "error",
+        errorMessage: error instanceof Error ? error.message : "Error desconocido",
+        page: "/dashboard/inventario",
+        section: "Inventario / Categorías",
+      });
+    }
     return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo crear la categoría" }, { status: 400 });
   }
 }
