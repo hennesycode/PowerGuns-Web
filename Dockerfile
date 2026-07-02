@@ -23,6 +23,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
+ENV CI=true
 
 # OpenSSL necesario para Prisma en runtime
 RUN apk add --no-cache openssl
