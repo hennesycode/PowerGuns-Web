@@ -39,6 +39,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # node_modules completo para que Prisma (adapter, engine, driver) funcione en runtime
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
+# Prisma schema, migraciones y config para migrate deploy
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+
 COPY <<'EOF' start.sh
 #!/bin/sh
 node node_modules/prisma/build/index.js migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
