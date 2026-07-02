@@ -43,7 +43,7 @@ COPY <<'EOF' start.sh
 pnpm exec prisma migrate deploy 2>&1 || echo "Migraciones ya aplicadas o no disponibles"
 exec node server.js
 EOF
-RUN chown nextjs:nodejs start.sh && chmod +x start.sh
+RUN chown nextjs:nodejs start.sh && chmod +x start.sh && chown nextjs:nodejs /app
 
 USER nextjs
 EXPOSE 3000
