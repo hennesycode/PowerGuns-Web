@@ -6,9 +6,9 @@ import { SiteShell } from "@/components/shared/SiteShell";
 import { HomeFooter } from "@/components/home/HomeFooter";
 
 const stats = [
-  { value: "369", label: "Prácticas Certificadas" },
-  { value: "102", label: "Certificados Emitidos" },
-  { value: "726", label: "Visitantes" },
+  { value: "462+", label: "Prácticas Certificadas" },
+  { value: "211+", label: "Certificados Emitidos" },
+  { value: "708+", label: "Visitantes" },
   { value: "3", label: "Instructores" },
 ];
 
