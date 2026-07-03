@@ -31,7 +31,7 @@ export const CONTACT = {
 export const STATS = [
   { value: "4", suffix: "+", label: "Estaciones de Tiro" },
   { value: "15", suffix: "m", label: "Distancia Máxima" },
-  { value: "15", suffix: "+", label: "Calibres Disponibles" },
+  { value: "3", suffix: "+", label: "Cantidad de armas disponibles" },
   { value: "100", suffix: "%", label: "Certificado & Legal" },
 ];
 
