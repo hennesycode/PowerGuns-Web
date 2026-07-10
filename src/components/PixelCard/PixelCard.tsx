@@ -191,7 +191,7 @@ export default function PixelCard({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pixelsRef = useRef<Pixel[]>([]);
   const animationRef = useRef<number>(0);
-  const timePreviousRef = useRef(performance.now());
+  const timePreviousRef = useRef(0);
   const reducedMotionRef = useRef(false);
 
   useEffect(() => {
@@ -250,9 +250,8 @@ export default function PixelCard({
     pixelsRef.current = px;
   };
 
-  const doAnimate = (fnName: "appear" | "disappear") => {
-    animationRef.current = requestAnimationFrame(() => doAnimate(fnName));
-    const timeNow = performance.now();
+  const doAnimate = (fnName: "appear" | "disappear", timeNow: number) => {
+    animationRef.current = requestAnimationFrame((nextTime) => doAnimate(fnName, nextTime));
     const timePassed = timeNow - timePreviousRef.current;
     const timeInterval = 1000 / 60;
 
@@ -278,7 +277,7 @@ export default function PixelCard({
 
   const handleAnimation = (name: "appear" | "disappear") => {
     cancelAnimationFrame(animationRef.current);
-    animationRef.current = requestAnimationFrame(() => doAnimate(name));
+    animationRef.current = requestAnimationFrame((time) => doAnimate(name, time));
   };
 
   const onMouseEnter = () => handleAnimation("appear");

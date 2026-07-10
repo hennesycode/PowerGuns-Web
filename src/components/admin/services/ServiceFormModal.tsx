@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -665,10 +666,13 @@ export function ServiceFormModal({
                   </label>
                   {mainImagePreview ? (
                     <div className="relative w-40 h-40 bg-[#080706] border border-[#c4871a]/15 overflow-hidden mb-2">
-                      <img
+                      <Image
                         src={mainImagePreview}
                         alt="Vista previa principal"
+                        fill
+                        sizes="160px"
                         className="w-full h-full object-cover"
+                        unoptimized
                       />
                       <button
                         type="button"
@@ -718,10 +722,13 @@ export function ServiceFormModal({
                           key={img.id}
                           className="relative aspect-square bg-[#080706] border border-[#3C3A37] overflow-hidden group"
                         >
-                          <img
+                          <Image
                             src={img.imageUrl}
                             alt={img.altText || ""}
+                            fill
+                            sizes="120px"
                             className="w-full h-full object-cover"
+                            unoptimized
                           />
                           <button
                             type="button"
@@ -746,10 +753,13 @@ export function ServiceFormModal({
                           key={`new-${i}`}
                           className="relative aspect-square bg-[#080706] border border-[#c4871a]/20 overflow-hidden"
                         >
-                          <img
+                          <Image
                             src={preview}
                             alt={`Galería ${i + 1}`}
+                            fill
+                            sizes="120px"
                             className="w-full h-full object-cover"
+                            unoptimized
                           />
                           <button
                             type="button"

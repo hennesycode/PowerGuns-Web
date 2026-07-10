@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 import { useCartContext } from "@/context/CartContext";
 import { toast } from "sonner";
 
@@ -123,12 +124,14 @@ export function CartDrawer() {
                   className="flex gap-3 p-3 bg-[#171513] border border-[#c4871a]/8"
                 >
                   {/* Image */}
-                  <div className="w-16 h-16 shrink-0 bg-[#080706] border border-[#c4871a]/10 overflow-hidden">
-                    <img
+                  <div className="relative w-16 h-16 shrink-0 bg-[#080706] border border-[#c4871a]/10 overflow-hidden">
+                    <Image
                       src={item.mainImageUrl}
                       alt={item.name}
+                      fill
+                      sizes="64px"
                       className="w-full h-full object-cover"
-                      loading="lazy"
+                      unoptimized
                     />
                   </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 const navItems = [
@@ -128,7 +129,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <div className="flex items-center justify-between h-16 px-6 border-b border-[#c4871a]/10 flex-shrink-0">
           <Link href="/dashboard" className="flex items-center gap-3 no-underline">
             <span className="w-8 h-8 bg-[#080706] border border-[#c4871a]/30 rounded-full flex items-center justify-center overflow-hidden">
-              <img src="/logo.jpg" alt="Power Guns" className="w-full h-full object-contain" />
+              <Image src="/logo.jpg" alt="Power Guns" width={32} height={32} className="w-full h-full object-contain" />
             </span>
             <div>
               <div className="font-heading font-bold text-sm uppercase text-white tracking-[.08em] leading-tight">

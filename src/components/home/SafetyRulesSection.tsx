@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import { SiteShell } from "@/components/shared/SiteShell";
 
 const rules = [
@@ -228,19 +229,21 @@ export function SafetyRulesSection() {
                 <span className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-[#c4871a]/40 pointer-events-none z-10" />
 
                 {/* Imagen - 9:16 en desktop, oculta en mobile */}
-                <img
+                <Image
                   src="/media/safety-rules-portrait.png"
                   alt="Normas de seguridad - Power Guns Polígono"
+                  width={900}
+                  height={1600}
                   className="hidden md:block w-full h-auto object-cover"
-                  loading="lazy"
                 />
 
                 {/* Imagen - 1:1 solo en mobile */}
-                <img
+                <Image
                   src="/media/safety-rules-square.png"
                   alt="Reglamentación Power Guns - Protocolos de seguridad"
+                  width={900}
+                  height={900}
                   className="md:hidden w-full h-auto object-cover"
-                  loading="lazy"
                 />
 
                 {/* Overlay sutil */}

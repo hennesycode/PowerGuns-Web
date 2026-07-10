@@ -8,7 +8,6 @@ import {
   isPastSlot,
   isValidDateKey,
   isTimeWithinBusinessHours,
-  type AvailabilitySlot,
 } from "@/lib/timezone";
 import { businessHoursService } from "@/server/services/business-hours.service";
 import type {

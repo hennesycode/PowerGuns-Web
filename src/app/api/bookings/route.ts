@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     const booking = await bookingService.create(parsed.data);
     return NextResponse.json({ success: true, bookingId: booking.id });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Error al crear la reserva" }, { status: 500 });
   }
 }

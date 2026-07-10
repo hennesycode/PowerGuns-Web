@@ -9,7 +9,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     const history = await inventoryService.getHistory(id);
     return NextResponse.json({ history });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Error al obtener historial" }, { status: 500 });
   }
 }

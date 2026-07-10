@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { ServiceItem } from "@/lib/types/service";
 import { ToggleSwitch } from "./ToggleSwitch";
@@ -86,13 +87,15 @@ export function ServicesTable({
                 className="hover:bg-[#c4871a]/3 transition-colors group"
               >
                 <td className="py-3 px-4">
-                  <div className="w-8 h-8 bg-[#080706] border border-[#c4871a]/15 flex items-center justify-center overflow-hidden">
+                  <div className="relative w-8 h-8 bg-[#080706] border border-[#c4871a]/15 flex items-center justify-center overflow-hidden">
                     {service.mainImageUrl ? (
-                      <img
+                      <Image
                         src={service.mainImageUrl}
                         alt={service.title}
+                        fill
+                        sizes="32px"
                         className="w-full h-full object-cover"
-                        loading="lazy"
+                        unoptimized
                       />
                     ) : (
                       <span className="text-[10px] text-[#5B5A59] font-heading font-bold">
@@ -209,13 +212,15 @@ export function ServicesTable({
           <div key={service.id} className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 bg-[#080706] border border-[#c4871a]/15 flex-shrink-0 overflow-hidden">
+                <div className="relative w-10 h-10 bg-[#080706] border border-[#c4871a]/15 flex-shrink-0 overflow-hidden">
                   {service.mainImageUrl ? (
-                    <img
+                    <Image
                       src={service.mainImageUrl}
                       alt={service.title}
+                      fill
+                      sizes="40px"
                       className="w-full h-full object-cover"
-                      loading="lazy"
+                      unoptimized
                     />
                   ) : (
                     <span className="flex items-center justify-center h-full text-[10px] text-[#5B5A59] font-heading font-bold">

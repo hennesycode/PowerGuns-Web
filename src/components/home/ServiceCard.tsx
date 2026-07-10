@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useCartContext } from "@/context/CartContext";
 
 interface ServiceCardProps {
@@ -65,11 +66,13 @@ export function ServiceCard({
 
       {/* Image 1:1 — same size for all */}
       <div className="relative aspect-square w-full shrink-0 bg-[#080706] overflow-hidden">
-        <img
+        <Image
           src={mainImageUrl}
           alt={title}
+          fill
+          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
+          unoptimized
         />
         <div className="absolute inset-0 bg-[#c4871a]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>

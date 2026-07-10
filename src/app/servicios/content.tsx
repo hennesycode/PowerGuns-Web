@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useCartContext } from "@/context/CartContext";
 import { SiteShell } from "@/components/shared/SiteShell";
 import { toast } from "sonner";
@@ -339,11 +340,13 @@ function ServiceCardGrid({ service }: { service: Service }) {
       )}
 
       <div className="relative aspect-square w-full shrink-0 bg-[#080706] overflow-hidden">
-        <img
+        <Image
           src={service.mainImageUrl}
           alt={service.title}
+          fill
+          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
+          unoptimized
         />
         <div className="absolute inset-0 bg-[#c4871a]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
@@ -455,11 +458,13 @@ function ServiceRow({ service }: { service: Service }) {
             Destacado
           </div>
         )}
-        <img
+        <Image
           src={service.mainImageUrl}
           alt={service.title}
+          fill
+          sizes="(min-width: 768px) 200px, 100vw"
           className="w-full h-full object-cover"
-          loading="lazy"
+          unoptimized
         />
       </div>
 

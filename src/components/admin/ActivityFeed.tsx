@@ -55,15 +55,6 @@ const ACTION_LABELS: Record<string, string> = {
   login: "Inicio de sesión",
 };
 
-const ACTION_COLORS: Record<string, string> = {
-  created: "bg-green-500",
-  updated: "bg-[#c4871a]",
-  changed: "bg-blue-500",
-  deleted: "bg-[#B63A2B]",
-  error: "bg-[#B63A2B]",
-  success: "bg-green-500",
-};
-
 function getActionColor(action: string) {
   if (action.includes("deleted")) return "bg-[#B63A2B]";
   if (action.includes("created") || action.includes("registered")) return "bg-green-500";
@@ -196,7 +187,8 @@ export function ActivityFeed() {
   }, []);
 
   useEffect(() => {
-    fetchLogs(page);
+    const timeout = window.setTimeout(() => fetchLogs(page), 0);
+    return () => window.clearTimeout(timeout);
   }, [page, fetchLogs]);
 
   return (

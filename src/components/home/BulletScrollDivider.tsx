@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 export function BulletScrollDivider() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -131,9 +132,11 @@ export function BulletScrollDivider() {
         />
 
         {/* BALA — por encima de todo */}
-        <img
+        <Image
           src="/bullet.png"
           alt=""
+          width={200}
+          height={80}
           className="w-[200px] h-auto select-none"
           draggable={false}
           style={{

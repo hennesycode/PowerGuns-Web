@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { SiteShell } from "@/components/shared/SiteShell";
 
 const ADDRESS = "Barrio Barzal Alto, Cl. 34 #41 - 32, Villavicencio, Meta";
@@ -215,9 +216,11 @@ export function LocationSection() {
                   {/* Círculo exterior */}
                   <span className="relative flex items-center justify-center w-11 h-11 rounded-full border-2 border-[#c4871a] bg-[#080706] shadow-[0_0_24px_rgba(196,135,26,.35)]">
                     {/* Logo */}
-                    <img
+                    <Image
                       src="/logo.jpg"
                       alt="Power Guns"
+                      width={28}
+                      height={28}
                       className="w-7 h-7 object-contain rounded-full"
                     />
                   </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 interface AuthUser {
   id: number;
@@ -74,7 +75,7 @@ export function Topbar({ onMenuToggle, title = "Dashboard" }: TopbarProps) {
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-[#c4871a]/15 border border-[#c4871a]/30 flex items-center justify-center overflow-hidden">
             {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+              <Image src={user.avatarUrl} alt={fullName} width={32} height={32} className="w-full h-full object-cover" unoptimized />
             ) : (
               <span className="font-heading font-bold text-xs text-[#c4871a]">{initials || "PG"}</span>
             )}

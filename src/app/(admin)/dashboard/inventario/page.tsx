@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { toast } from "sonner";
 
@@ -344,7 +345,7 @@ function ProductFormModal({ product, allCats, onClose, onSaved }: { product: Pro
     <div className="mt-4 flex items-center gap-3">
       <Field label="Estado"><select value={isActive ? "true" : "false"} onChange={(e) => setIsActive(e.target.value === "true")} className={inp}><option value="true">Activo</option><option value="false">Inactivo</option></select></Field>
       <div className="self-end"><label className={`inline-block px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] cursor-pointer transition-colors ${imagePreview ? "border border-green-500/40 text-green-400" : "border border-[#c4871a]/40 text-[#c4871a] hover:bg-[#c4871a]/10"}`}>📷 Imagen<input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImage} className="hidden" /></label></div>
-      {imagePreview && <img src={imagePreview} alt="Vista previa" className="h-10 w-10 border border-[#c4871a]/10 bg-[#080706] object-cover" />}
+      {imagePreview && <Image src={imagePreview} alt="Vista previa" width={40} height={40} className="h-10 w-10 border border-[#c4871a]/10 bg-[#080706] object-cover" unoptimized />}
     </div>
     <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} className="w-full border border-[#c4871a]/20 bg-transparent px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-[#B2AAA7] hover:border-[#c4871a]/50 hover:text-white transition-all sm:w-auto">Cancelar</button><button type="button" onClick={submit} disabled={saving} className="w-full bg-[#c4871a] px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-[#080706] hover:bg-[#d6a244] transition-all disabled:opacity-60 sm:w-auto">{saving ? "Guardando..." : "Guardar"}</button></div>
   </div></ModalOverlay>;
@@ -405,7 +406,7 @@ function ProductsTable({ products, onEdit, onDelete, onHistory }: { products: Pr
           <tbody className="divide-y divide-[#c4871a]/8">
             {products.map((p) => (
               <tr key={p.id} className="text-[#B2AAA7] hover:bg-[#c4871a]/5 transition-colors">
-                <td className="px-4 py-3">{p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="h-10 w-10 object-cover border border-[#c4871a]/10 bg-[#080706]" loading="lazy" /> : <span className="flex h-10 w-10 items-center justify-center border border-[#3C3A37] bg-[#080706] text-xs text-[#5B5A59]">—</span>}</td>
+                <td className="px-4 py-3">{p.imageUrl ? <Image src={p.imageUrl} alt={p.name} width={40} height={40} className="h-10 w-10 object-cover border border-[#c4871a]/10 bg-[#080706]" unoptimized /> : <span className="flex h-10 w-10 items-center justify-center border border-[#3C3A37] bg-[#080706] text-xs text-[#5B5A59]">—</span>}</td>
                 <td className="px-4 py-3 font-semibold text-white">{p.name}{p.sku && <span className="ml-2 text-xs text-[#5B5A59]">{p.sku}</span>}</td>
                 <td className="px-4 py-3">{p.categoryName}</td>
                 <td className="px-4 py-3"><span className={p.quantity <= p.minStock && p.minStock > 0 ? "text-[#B63A2B]" : p.quantity === 0 ? "text-[#B63A2B]/60" : "text-white"}>{p.quantity}</span></td>
@@ -427,7 +428,7 @@ function ProductsTable({ products, onEdit, onDelete, onHistory }: { products: Pr
         {products.map((p) => (
           <div key={p.id} className="border border-[#c4871a]/10 bg-[#171513] p-4">
             <div className="flex items-start gap-3">
-              {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="h-14 w-14 shrink-0 border border-[#c4871a]/10 bg-[#080706] object-cover" loading="lazy" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center border border-[#3C3A37] bg-[#080706] text-xs text-[#5B5A59]">—</span>}
+              {p.imageUrl ? <Image src={p.imageUrl} alt={p.name} width={56} height={56} className="h-14 w-14 shrink-0 border border-[#c4871a]/10 bg-[#080706] object-cover" unoptimized /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center border border-[#3C3A37] bg-[#080706] text-xs text-[#5B5A59]">—</span>}
               <div className="min-w-0 flex-1"><h3 className="font-heading text-sm font-bold uppercase text-white">{p.name}</h3><p className="text-xs text-[#5B5A59]">{p.categoryName} · {p.location || "Sin ubicación"}</p><div className="mt-1 flex flex-wrap items-center gap-2 text-xs"><span className={p.quantity <= p.minStock && p.minStock > 0 ? "text-[#B63A2B]" : "text-[#B2AAA7]"}>Cant: {p.quantity}</span><span className="text-[#5B5A59]">Mín: {p.minStock}</span><span className={`inline-block border px-1.5 py-0.5 text-[9px] uppercase tracking-[.08em] ${p.isActive ? "border-green-500/30 text-green-400 bg-green-500/10" : "border-[#3C3A37] text-[#5B5A59] bg-[#080706]"}`}>{p.isActive ? "Activo" : "Inactivo"}</span></div></div>
             </div>
             <div className="mt-3 flex gap-2">

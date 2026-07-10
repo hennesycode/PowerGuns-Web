@@ -35,7 +35,7 @@ export default function GridScan({
     if (!canvas) return;
 
     let raf: number;
-    let startTime = performance.now();
+    const startTime = performance.now();
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;

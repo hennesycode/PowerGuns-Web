@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { SiteShell } from "@/components/shared/SiteShell";
 import { HomeFooter } from "@/components/home/HomeFooter";
 
@@ -206,11 +207,12 @@ export function NosotrosPageContent() {
                 <span className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-[#c4871a]/40 pointer-events-none z-10" />
                 <span className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-[#c4871a]/40 pointer-events-none z-10" />
                 <span className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-[#c4871a]/40 pointer-events-none z-10" />
-                <img
+                <Image
                   src="/media/about-hero.png"
                   alt="Power Guns Polígono - Instalaciones de entrenamiento táctico"
+                  width={1200}
+                  height={800}
                   className="w-full h-auto object-cover"
-                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,4,3,.1)_0%,transparent_50%,rgba(5,4,3,.2)_100%)] pointer-events-none" />
               </div>

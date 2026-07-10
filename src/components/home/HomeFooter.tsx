@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { toast } from "sonner";
 import { SiteShell } from "@/components/shared/SiteShell";
 
@@ -123,9 +124,11 @@ export function HomeFooter() {
             >
               <Link href="/" className="inline-block no-underline mb-4">
                 <div className="w-14 h-14 rounded-full border border-[#c4871a]/30 bg-[#0F0D0B] flex items-center justify-center overflow-hidden shadow-[0_0_20px_rgba(196,135,26,.12)]">
-                  <img
+                  <Image
                     src="/logo.jpg"
                     alt="Power Guns Polígono S.A.S."
+                    width={56}
+                    height={56}
                     className="w-full h-full object-contain"
                   />
                 </div>

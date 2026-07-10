@@ -16,14 +16,12 @@ export function StatsBar() {
   const [dragOff, setDragOff] = useState(0);
   const lock = useRef(false);
   const dragStart = useRef(0);
-  const activeRef = useRef(active);
-  activeRef.current = active;
   const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const slide = useCallback((dir: 1 | -1) => {
     if (lock.current) return;
     lock.current = true;
-    setLeaving(activeRef.current);
+    setLeaving(active);
     setPhase("exit");
 
     setTimeout(() => {
@@ -36,7 +34,7 @@ export function StatsBar() {
       setLeaving(null);
       lock.current = false;
     }, 650);
-  }, []);
+  }, [active]);
 
   const goNext = useCallback(() => slide(1), [slide]);
   const goPrev = useCallback(() => slide(-1), [slide]);
@@ -85,7 +83,7 @@ export function StatsBar() {
     setDragOff(0);
   };
 
-  const current = phase === "enter" ? active : activeRef.current;
+  const current = phase === "enter" ? active : leaving ?? active;
 
   return (
     <div className="bg-[#0F0D0B] border-t border-[#c4871a]/25 border-b border-[#c4871a]/15">

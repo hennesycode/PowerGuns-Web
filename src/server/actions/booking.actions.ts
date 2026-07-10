@@ -21,7 +21,7 @@ export async function createBooking(formData: FormData) {
   try {
     const booking = await bookingService.create(parsed.data);
     return { success: true, bookingId: booking.id };
-  } catch (e) {
+  } catch {
     return { error: "Error al crear la reserva" };
   }
 }

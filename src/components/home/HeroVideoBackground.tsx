@@ -40,8 +40,11 @@ export function HeroVideoBackground() {
   }, []);
 
   useEffect(() => {
-    setShuffled(shuffle(VIDEO_SOURCES));
-    setMounted(true);
+    const timeout = window.setTimeout(() => {
+      setShuffled(shuffle(VIDEO_SOURCES));
+      setMounted(true);
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, []);
 
   // Autoplay active video

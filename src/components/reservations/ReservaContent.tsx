@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ReservationForm } from "@/components/reservations/ReservationForm";
 import { ReservationSummary } from "@/components/reservations/ReservationSummary";
 import { useCartContext } from "@/context/CartContext";
@@ -66,7 +67,7 @@ export function ReservaContent() {
       <div className="pb-5 pt-4 text-center">
         <Link href="/" className="inline-block no-underline">
           <div className="w-14 h-14 rounded-full border border-[#c4871a]/30 bg-[#0F0D0B] flex items-center justify-center overflow-hidden mx-auto">
-            <img src="/logo.jpg" alt="Power Guns" className="w-full h-full object-contain" />
+            <Image src="/logo.jpg" alt="Power Guns" width={56} height={56} className="w-full h-full object-contain" />
           </div>
           <div className="mt-3 font-heading font-extrabold text-sm uppercase tracking-widest text-white">
             POWER <span className="text-[#c4871a]">GUNS</span>

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import GridScan from "@/components/GridScan/GridScan";
 
@@ -97,9 +98,11 @@ export default function LoginPage() {
               {/* Logo */}
               <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full border border-[#c4871a]/35 bg-[#0F0D0B] mb-5 overflow-hidden shadow-[0_0_30px_rgba(196,135,26,0.18)]">
-                  <img
+                  <Image
                     src="/logo.jpg"
                     alt="Power Guns"
+                    width={64}
+                    height={64}
                     className="w-full h-full object-contain"
                   />
                 </div>

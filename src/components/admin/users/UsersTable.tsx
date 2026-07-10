@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { AdminUserItem } from "@/lib/types/user";
 
@@ -34,9 +35,9 @@ function formatDate(value: string | null) {
 function UserAvatar({ user }: { user: AdminUserItem }) {
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() || "PG";
   return (
-    <div className="w-9 h-9 bg-[#080706] border border-[#c4871a]/15 flex items-center justify-center overflow-hidden flex-shrink-0">
+    <div className="relative w-9 h-9 bg-[#080706] border border-[#c4871a]/15 flex items-center justify-center overflow-hidden flex-shrink-0">
       {user.avatarUrl ? (
-        <img src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} className="w-full h-full object-cover" />
+        <Image src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} fill sizes="36px" className="w-full h-full object-cover" unoptimized />
       ) : (
         <span className="font-heading font-bold text-xs text-[#c4871a]">{initials}</span>
       )}
