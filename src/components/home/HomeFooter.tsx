@@ -13,7 +13,7 @@ const MAPS_LINK = "https://maps.app.goo.gl/bxJjqN7H8GukNkzy7";
 const HENNESY_LINK = "https://hennesy.pro";
 
 const quickLinks = [
-  { label: "Consulta Certificados DCCAE", href: "#" },
+  { label: "Consulta Certificados DCCAE", href: "/certificados-dccae/login" },
   { label: "Acerca de Nosotros", href: "/#nosotros" },
   { label: "Galería", href: "/#galeria" },
   { label: "Contáctenos", href: "/#contacto" },

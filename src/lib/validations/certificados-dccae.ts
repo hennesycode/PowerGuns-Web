@@ -27,6 +27,16 @@ export const updateCertificateItemSchema = z.object({
   parentId: z.string().trim().min(1).nullable().optional(),
 });
 
+export const certificateAuthorizedUserSchema = z.object({
+  username: z.string().trim().min(3, "El usuario debe tener mínimo 3 caracteres").max(80, "El usuario no puede superar 80 caracteres"),
+  password: z.string().min(8, "La contraseña debe tener mínimo 8 caracteres").max(120, "La contraseña no puede superar 120 caracteres"),
+});
+
+export const certificateAuthorizedLoginSchema = z.object({
+  username: z.string().trim().min(1, "Usuario requerido"),
+  password: z.string().min(1, "Contraseña requerida"),
+});
+
 export function sanitizeCertificateName(name: string): string {
   return name
     .replace(/[\\/:*?"<>|]/g, " ")

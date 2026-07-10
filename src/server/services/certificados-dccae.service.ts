@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
+import { comparePassword, hashPassword } from "@/lib/auth";
+import { createDccaeToken } from "@/lib/dccae-auth";
 import { deleteFromR2Silent, generateStorageKey, uploadToR2 } from "@/lib/storage";
 import { getFileExtension, sanitizeCertificateName } from "@/lib/validations/certificados-dccae";
 
@@ -197,5 +199,60 @@ export const certificadosDccaeService = {
     await prisma.certificateDccaeItem.delete({ where: { id } });
     await Promise.all(keys.map((key) => deleteFromR2Silent(key)));
     return { deleted: true };
+  },
+
+  async getAuthorizedUser() {
+    const user = await prisma.certificateDccaeAuthorizedUser.findFirst({
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, username: true, createdAt: true, updatedAt: true },
+    });
+    if (!user) return null;
+    return {
+      ...user,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    };
+  },
+
+  async upsertAuthorizedUser(input: { username: string; password: string }) {
+    const username = input.username.trim();
+    const passwordHash = await hashPassword(input.password);
+    const existing = await prisma.certificateDccaeAuthorizedUser.findFirst({
+      orderBy: { updatedAt: "desc" },
+    });
+
+    const user = existing
+      ? await prisma.certificateDccaeAuthorizedUser.update({
+          where: { id: existing.id },
+          data: { username, passwordHash },
+        })
+      : await prisma.certificateDccaeAuthorizedUser.create({
+          data: { username, passwordHash },
+        });
+
+    return {
+      id: user.id,
+      username: user.username,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    };
+  },
+
+  async loginAuthorizedUser(input: { username: string; password: string }) {
+    const user = await prisma.certificateDccaeAuthorizedUser.findFirst({
+      where: { username: input.username.trim() },
+    });
+    if (!user) return { error: "Credenciales inválidas" } as const;
+
+    const valid = await comparePassword(input.password, user.passwordHash);
+    if (!valid) return { error: "Credenciales inválidas" } as const;
+
+    const token = await createDccaeToken({
+      authorizedUserId: user.id,
+      username: user.username,
+      scope: "dccae_certificates",
+    });
+
+    return { token, user: { id: user.id, username: user.username } };
   },
 };

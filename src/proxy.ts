@@ -7,9 +7,31 @@ const AUTH_SECRET = new TextEncoder().encode(
 );
 
 const AUTH_COOKIE_NAME = "pg_auth_token";
+const DCCAE_AUTH_COOKIE_NAME = "pg_dccae_cert_token";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/certificados-dccae/consulta")) {
+    const token = request.cookies.get(DCCAE_AUTH_COOKIE_NAME)?.value;
+    if (!token) {
+      const loginUrl = new URL("/certificados-dccae/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    try {
+      const { payload } = await jwtVerify(token, AUTH_SECRET);
+      if (payload.scope !== "dccae_certificates") throw new Error("Invalid scope");
+      return NextResponse.next();
+    } catch {
+      const loginUrl = new URL("/certificados-dccae/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      const response = NextResponse.redirect(loginUrl);
+      response.cookies.delete(DCCAE_AUTH_COOKIE_NAME);
+      return response;
+    }
+  }
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
 
@@ -32,5 +54,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/certificados-dccae/consulta/:path*", "/certificados-dccae/consulta"],
 };

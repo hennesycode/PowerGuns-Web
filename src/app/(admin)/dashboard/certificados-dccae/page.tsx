@@ -50,6 +50,7 @@ export default function CertificadosDccaePage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const [authorizedUserModalOpen, setAuthorizedUserModalOpen] = useState(false);
   const [renamingItem, setRenamingItem] = useState<CertificateItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<CertificateItem | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
@@ -150,6 +151,7 @@ export default function CertificadosDccaePage() {
             <p className="max-w-2xl text-sm text-[#B2AAA7]">Gestor documental para carpetas, certificados, soportes e imágenes. Puedes abrir carpetas, crear subcarpetas, cargar archivos y mover elementos arrastrándolos.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
+            <button type="button" onClick={() => setAuthorizedUserModalOpen(true)} className="border border-[#c4871a]/30 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#B2AAA7] transition-colors hover:border-[#c4871a]/60 hover:bg-[#c4871a]/10 hover:text-[#c4871a]">Usuario autorizado</button>
             <button type="button" onClick={() => setFolderModalOpen(true)} className="border border-[#c4871a]/40 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#c4871a] transition-colors hover:bg-[#c4871a]/10">+ Crear carpeta</button>
             <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="bg-[#c4871a] px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#080706] transition-colors hover:bg-[#d6a244] disabled:opacity-60">{uploading ? "Cargando..." : "+ Agregar archivos"}</button>
             <input ref={fileInputRef} type="file" multiple accept={allowedAccept} className="hidden" onChange={(e) => e.target.files && uploadFiles(e.target.files)} />
@@ -251,6 +253,7 @@ export default function CertificadosDccaePage() {
       )}
 
       {folderModalOpen && <FolderModal parentId={currentFolderId} onClose={() => setFolderModalOpen(false)} onSaved={() => { setFolderModalOpen(false); fetchItems(); }} />}
+      {authorizedUserModalOpen && <AuthorizedUserModal onClose={() => setAuthorizedUserModalOpen(false)} />}
       {renamingItem && <RenameModal item={renamingItem} onClose={() => setRenamingItem(null)} onSaved={() => { setRenamingItem(null); fetchItems(); }} />}
       {deletingItem && <ConfirmDeleteModal item={deletingItem} onCancel={() => setDeletingItem(null)} onConfirm={deleteItem} />}
     </AdminLayout>
@@ -310,6 +313,73 @@ function FolderModal({ parentId, onClose, onSaved }: { parentId: string | null; 
     finally { setSaving(false); }
   };
   return <NameModal title="Crear carpeta" value={name} onChange={setName} onClose={onClose} onSubmit={submit} saving={saving} action="Crear carpeta" />;
+}
+
+function AuthorizedUserModal({ onClose }: { onClose: () => void }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/dashboard/certificados-dccae/authorized-user");
+        const data = await res.json();
+        if (!cancelled && res.ok && data.user) setUsername(data.user.username);
+      } catch { /* silent */ }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const submit = async () => {
+    if (!username.trim()) { toast.error("Ingresa el usuario autorizado"); return; }
+    if (password.length < 8) { toast.error("La contraseña debe tener mínimo 8 caracteres"); return; }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/dashboard/certificados-dccae/authorized-user", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo guardar el usuario autorizado");
+      toast.success("Usuario autorizado actualizado correctamente");
+      onClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo guardar el usuario autorizado");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <h2 className="mb-3 font-heading text-xl font-bold uppercase tracking-[.04em] text-white">Usuario autorizado</h2>
+      <p className="mb-6 text-sm leading-relaxed text-[#B2AAA7]">Esta credencial solo permite consultar Certificados DCCAE desde el sitio público. No crea usuarios de plataforma ni da acceso al dashboard.</p>
+      {loading ? (
+        <div className="flex justify-center py-10"><span className="h-6 w-6 animate-spin rounded-full border-2 border-[#c4871a] border-t-transparent" /></div>
+      ) : (
+        <div className="space-y-5">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#B2AAA7]">Usuario</label>
+            <input value={username} onChange={(e) => setUsername(e.target.value)} className="mt-2 w-full border border-[#c4871a]/20 bg-[#050403] px-3 py-3 text-sm text-white placeholder-[#5E5A57] transition-colors focus:border-[#c4871a]/60 focus:outline-none" placeholder="usuario autorizado" autoComplete="username" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#B2AAA7]">Contraseña</label>
+            <input value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2 w-full border border-[#c4871a]/20 bg-[#050403] px-3 py-3 text-sm text-white placeholder-[#5E5A57] transition-colors focus:border-[#c4871a]/60 focus:outline-none" placeholder="mínimo 8 caracteres" type="password" autoComplete="new-password" />
+          </div>
+          <div className="rounded-sm border border-[#c4871a]/10 bg-[#050403] p-3 text-xs leading-relaxed text-[#5B5A59]">Al guardar una nueva contraseña se reemplaza la anterior. Por seguridad, la contraseña actual no se muestra.</div>
+        </div>
+      )}
+      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" onClick={onClose} className="border border-[#c4871a]/20 px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-[#B2AAA7] transition-colors hover:border-[#c4871a]/50 hover:text-white">Cancelar</button>
+        <button type="button" onClick={submit} disabled={saving || loading} className="bg-[#c4871a] px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-[#080706] transition-colors hover:bg-[#d6a244] disabled:opacity-60">{saving ? "Guardando..." : "Guardar usuario"}</button>
+      </div>
+    </ModalOverlay>
+  );
 }
 
 function RenameModal({ item, onClose, onSaved }: { item: CertificateItem; onClose: () => void; onSaved: () => void }) {
