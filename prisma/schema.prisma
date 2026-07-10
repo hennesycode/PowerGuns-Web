@@ -356,6 +356,34 @@ model ActivityLog {
   @@index([status])
 }
 
+enum CertificateDccaeItemType {
+  folder
+  file
+}
+
+model CertificateDccaeItem {
+  id          String                   @id @default(cuid())
+  name        String
+  type        CertificateDccaeItemType
+
+  parentId    String?
+  parent      CertificateDccaeItem?    @relation("CertificateDccaeHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    CertificateDccaeItem[]   @relation("CertificateDccaeHierarchy")
+
+  fileUrl     String?
+  fileKey     String?
+  mimeType    String?
+  size        Int?
+  extension   String?
+
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@index([parentId])
+  @@index([type])
+  @@index([name])
+}
+
 model InventoryProductHistory {
   id            String           @id @default(cuid())
 

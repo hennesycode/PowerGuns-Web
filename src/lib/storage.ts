@@ -19,6 +19,7 @@ export async function uploadToR2(
   buffer: Buffer,
   key: string,
   contentType: string,
+  cacheControl?: string,
 ): Promise<string> {
   const client = getR2Client();
   const bucket = process.env.R2_BUCKET_NAME!;
@@ -29,6 +30,7 @@ export async function uploadToR2(
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      CacheControl: cacheControl,
     }),
   );
 
