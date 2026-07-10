@@ -111,6 +111,23 @@ export const adminUpdateUserSchema = z.object({
   }
 });
 
+export const profileUpdateSchema = z.object({
+  firstName: z.string().min(1, "Requerido"),
+  lastName: z.string().min(1, "Requerido"),
+  email: z.string().email("Correo inválido"),
+  identificationType: z.enum(["cedula", "pasaporte", "cedula_extranjeria"]),
+  identificationNumber: z.string().min(3, "Requerido"),
+});
+
+export const profilePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Ingrese la contraseña actual"),
+  newPassword: passwordSchema,
+  confirmPassword: z.string().min(1, "Confirme la nueva contraseña"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
+});
+
 export const loginSchema = z.object({
   email: z.string().min(1, "Requerido"),
   password: z.string().min(1, "Requerido"),
@@ -118,3 +135,5 @@ export const loginSchema = z.object({
 
 export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
 export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>;
+export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+export type ProfilePasswordInput = z.infer<typeof profilePasswordSchema>;

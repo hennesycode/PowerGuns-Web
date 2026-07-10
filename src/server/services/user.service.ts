@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { hashPassword } from "@/lib/auth";
-import type { AdminCreateUserInput, AdminUpdateUserInput } from "@/lib/validations";
+import { comparePassword, hashPassword } from "@/lib/auth";
+import type { AdminCreateUserInput, AdminUpdateUserInput, ProfilePasswordInput, ProfileUpdateInput } from "@/lib/validations";
 
 const userSelect = {
   id: true,
@@ -91,6 +91,58 @@ export const userService = {
       select: userSelect,
     });
     return serializeUser(user);
+  },
+
+  async getProfile(id: number) {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: userSelect,
+    });
+    if (!user || !user.isActive) throw new Error("Usuario no encontrado");
+    return serializeUser(user);
+  },
+
+  async updateProfile(id: number, input: ProfileUpdateInput) {
+    const existing = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, username: true, isActive: true },
+    });
+    if (!existing || !existing.isActive) throw new Error("Usuario no encontrado");
+
+    await assertUniqueUserFields({
+      username: existing.username,
+      email: input.email,
+      identificationNumber: input.identificationNumber,
+    }, id);
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+        identificationType: input.identificationType,
+        identificationNumber: input.identificationNumber,
+      },
+      select: userSelect,
+    });
+    return serializeUser(user);
+  },
+
+  async updateOwnPassword(id: number, input: ProfilePasswordInput) {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, passwordHash: true, isActive: true },
+    });
+    if (!user || !user.isActive) throw new Error("Usuario no encontrado");
+
+    const valid = await comparePassword(input.currentPassword, user.passwordHash);
+    if (!valid) throw new Error("La contraseña actual no es correcta");
+
+    await prisma.user.update({
+      where: { id },
+      data: { passwordHash: await hashPassword(input.newPassword) },
+    });
   },
 
   async update(id: number, input: AdminUpdateUserInput) {
