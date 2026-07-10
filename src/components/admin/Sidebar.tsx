@@ -41,7 +41,7 @@ const navItems = [
   },
   {
     label: "Usuarios",
-    href: "#",
+    href: "/dashboard/usuarios",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5">
         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />

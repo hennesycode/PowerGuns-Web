@@ -59,7 +59,62 @@ export const registerSchema = z.object({
   password: passwordSchema,
 });
 
+export const adminCreateUserSchema = registerSchema.extend({
+  isActive: z.boolean().default(true),
+  confirmPassword: z.string().min(1, "Confirme la contraseña"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
+});
+
+export const adminUpdateUserSchema = z.object({
+  username: z.string().min(3, "Mínimo 3 caracteres").max(30),
+  firstName: z.string().min(1, "Requerido"),
+  lastName: z.string().min(1, "Requerido"),
+  email: z.string().email("Correo inválido"),
+  identificationType: z.enum(["cedula", "pasaporte", "cedula_extranjeria"]),
+  identificationNumber: z.string().min(3, "Requerido"),
+  role: z.enum(["administrador", "finanzas", "editor", "cliente", "instructor"]),
+  isActive: z.boolean(),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const password = data.password?.trim();
+  const confirmPassword = data.confirmPassword?.trim();
+
+  if (!password && !confirmPassword) return;
+
+  if (!password || !confirmPassword) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Ingrese y confirme la nueva contraseña",
+      path: [!password ? "password" : "confirmPassword"],
+    });
+    return;
+  }
+
+  const parsedPassword = passwordSchema.safeParse(password);
+  if (!parsedPassword.success) {
+    ctx.addIssue({
+      code: "custom",
+      message: parsedPassword.error.issues[0]?.message || "Contraseña inválida",
+      path: ["password"],
+    });
+  }
+
+  if (password !== confirmPassword) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Las contraseñas no coinciden",
+      path: ["confirmPassword"],
+    });
+  }
+});
+
 export const loginSchema = z.object({
   email: z.string().min(1, "Requerido"),
   password: z.string().min(1, "Requerido"),
 });
+
+export type AdminCreateUserInput = z.infer<typeof adminCreateUserSchema>;
+export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>;

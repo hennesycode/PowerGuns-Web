@@ -48,6 +48,9 @@ const ACTION_LABELS: Record<string, string> = {
   category_updated: "Categoría actualizada",
   category_deleted: "Categoría eliminada",
   business_hours_updated: "Horario actualizado",
+  user_created: "Usuario creado",
+  user_updated: "Usuario actualizado",
+  user_deleted: "Usuario eliminado",
   user_registered: "Usuario registrado",
   login: "Inicio de sesión",
 };
