@@ -147,8 +147,7 @@ export default function CertificadosDccaePage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h1 className="font-heading text-2xl font-bold uppercase tracking-[.04em] text-white">Certificados DCCAE</h1>
-            <p className="mt-1 max-w-2xl text-sm text-[#B2AAA7]">Gestor documental para carpetas, certificados, soportes e imágenes. Puedes abrir carpetas, crear subcarpetas, cargar archivos y mover elementos arrastrándolos.</p>
+            <p className="max-w-2xl text-sm text-[#B2AAA7]">Gestor documental para carpetas, certificados, soportes e imágenes. Puedes abrir carpetas, crear subcarpetas, cargar archivos y mover elementos arrastrándolos.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <button type="button" onClick={() => setFolderModalOpen(true)} className="border border-[#c4871a]/40 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#c4871a] transition-colors hover:bg-[#c4871a]/10">+ Crear carpeta</button>
