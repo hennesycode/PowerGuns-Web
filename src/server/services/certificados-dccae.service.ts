@@ -85,6 +85,26 @@ export const certificadosDccaeService = {
     return { items: items.map(serialize), breadcrumbs };
   },
 
+  async search(query: string) {
+    const term = query.trim();
+    if (!term) return { items: [], breadcrumbs: [], search: true };
+
+    const items = await prisma.certificateDccaeItem.findMany({
+      where: { name: { contains: term } },
+      orderBy: [{ type: "asc" }, { name: "asc" }],
+      take: 50,
+    });
+
+    const results = await Promise.all(
+      items.map(async (item) => ({
+        ...serialize(item),
+        breadcrumbs: await this.getBreadcrumbs(item.parentId),
+      })),
+    );
+
+    return { items: results, breadcrumbs: [], search: true };
+  },
+
   async getBreadcrumbs(parentId: string | null) {
     const crumbs: { id: string; name: string }[] = [];
     let cursor = parentId;

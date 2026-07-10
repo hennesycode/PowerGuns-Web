@@ -8,7 +8,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const isAdmin =
     pathname?.startsWith("/login") ||
     pathname?.startsWith("/dashboard") ||
-    pathname?.startsWith("/reservas");
+    pathname?.startsWith("/reservas") ||
+    pathname?.startsWith("/certificados-dccae");
 
   if (isAdmin) return <>{children}</>;
 
