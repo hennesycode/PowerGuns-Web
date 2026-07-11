@@ -28,6 +28,11 @@ enum ReservationStatus {
   completed
 }
 
+enum GalleryMediaType {
+  image
+  video
+}
+
 model User {
   id                   Int                @id @default(autoincrement())
   username             String             @unique
@@ -126,6 +131,25 @@ model ContactLead {
   email     String?
   message   String?   @db.Text
   createdAt DateTime  @default(now())
+}
+
+model GalleryItem {
+  id        String           @id @default(cuid())
+  name      String
+  mediaType GalleryMediaType
+  fileUrl   String
+  fileKey   String
+  mimeType  String
+  size      Int
+  width     Int?
+  height    Int?
+  durationMs Int?
+  sortOrder Int              @default(0)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([mediaType])
+  @@index([sortOrder])
 }
 
 enum DiscountType {

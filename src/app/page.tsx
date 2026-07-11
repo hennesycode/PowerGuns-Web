@@ -5,6 +5,7 @@ import { InfoSpotlightSection } from "@/components/home/InfoSpotlightSection";
 import { ServicesProfessionalSection } from "@/components/home/ServicesProfessionalSection";
 import { AboutSection } from "@/components/home/AboutSection";
 import { CTABand } from "@/components/home/CTABand";
+import { GallerySection } from "@/components/home/GallerySection";
 import { SafetyRulesSection } from "@/components/home/SafetyRulesSection";
 import { LocationSection } from "@/components/home/LocationSection";
 import { HomeFooter } from "@/components/home/HomeFooter";
@@ -19,6 +20,7 @@ export default function HomePage() {
       <ServicesProfessionalSection />
       <AboutSection />
       <CTABand />
+      <GallerySection />
       <SafetyRulesSection />
       <LocationSection />
       <HomeFooter />
