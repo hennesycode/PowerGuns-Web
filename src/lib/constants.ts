@@ -13,7 +13,7 @@ export const SITE = {
 export const NAV_LINKS = [
   { label: "Servicios", href: "/servicios" },
   { label: "Nosotros", href: "/nosotros" },
-  { label: "Galería", href: "#galeria" },
+  { label: "Galería", href: "/galeria" },
   { label: "Contacto", href: "#contacto" },
 ];
 

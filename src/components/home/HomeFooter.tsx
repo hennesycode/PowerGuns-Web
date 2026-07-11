@@ -16,7 +16,7 @@ const HENNESY_LINK = "https://hennesy.pro";
 const quickLinks = [
   { label: "Consulta Certificados DCCAE", href: "/certificados-dccae/login" },
   { label: "Acerca de Nosotros", href: "/#nosotros" },
-  { label: "Galería", href: "/#galeria" },
+  { label: "Galería", href: "/galeria" },
   { label: "Contáctenos", href: "/#contacto" },
   { label: "Mi Cuenta", href: "/login" },
   { label: "Política de Privacidad", href: "/politica-de-privacidad" },
