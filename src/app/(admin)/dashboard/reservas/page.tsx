@@ -70,6 +70,15 @@ type AvailabilitySlot = {
   reason: "past" | "reserved" | "closed" | null;
 };
 
+type ReservationViewMode = "calendar" | "table";
+
+type CalendarDay = {
+  date: Date;
+  key: string;
+  inMonth: boolean;
+  isToday: boolean;
+};
+
 type FormState = {
   userId: number | null;
   firstName: string;
@@ -103,6 +112,9 @@ const statusClasses: Record<ReservationStatus, string> = {
   completed: "border-[#5B5A59]/40 bg-[#5B5A59]/10 text-[#B2AAA7]",
 };
 
+const weekDays = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const monthFormatter = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" });
+
 const emptyForm: FormState = {
   userId: null,
   firstName: "",
@@ -124,6 +136,39 @@ const emptyForm: FormState = {
 
 function formatCOP(value: number) {
   return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+}
+
+function dateToKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dateKeyToLocalDate(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function buildCalendarDays(monthDate: Date): CalendarDay[] {
+  const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const start = new Date(firstOfMonth);
+  const mondayOffset = (firstOfMonth.getDay() + 6) % 7;
+  start.setDate(firstOfMonth.getDate() - mondayOffset);
+  const todayKey = dateToKey(new Date());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const key = dateToKey(date);
+
+    return {
+      date,
+      key,
+      inMonth: date.getMonth() === monthDate.getMonth(),
+      isToday: key === todayKey,
+    };
+  });
 }
 
 function phoneToNational(phone: string) {
@@ -158,6 +203,8 @@ export default function ReservasDashboardPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ReservationStatus | "all">("all");
   const [date, setDate] = useState("");
+  const [viewMode, setViewMode] = useState<ReservationViewMode>("calendar");
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Reservation | null>(null);
   const [viewing, setViewing] = useState<Reservation | null>(null);
@@ -203,6 +250,19 @@ export default function ReservasDashboardPage() {
     confirmed: reservations.filter((reservation) => reservation.status === "confirmed").length,
     revenue: reservations.reduce((sum, reservation) => sum + reservation.total, 0),
   }), [reservations]);
+
+  const reservationsByDate = useMemo(() => {
+    const grouped = new Map<string, Reservation[]>();
+    reservations.forEach((reservation) => {
+      const current = grouped.get(reservation.reservationDate) ?? [];
+      current.push(reservation);
+      grouped.set(reservation.reservationDate, current);
+    });
+    grouped.forEach((items) => items.sort((a, b) => a.reservationTime.localeCompare(b.reservationTime)));
+    return grouped;
+  }, [reservations]);
+
+  const calendarDays = useMemo(() => buildCalendarDays(calendarMonth), [calendarMonth]);
 
   const handleDelete = async () => {
     if (!deleting) return;
@@ -256,13 +316,32 @@ export default function ReservasDashboardPage() {
             <option value="all">Todos los estados</option>
             {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border border-[#3C3A37] bg-[#080706] px-3 py-2.5 text-sm text-white outline-none focus:border-[#c4871a]/60" />
+          <input type="date" value={date} onChange={(e) => { const value = e.target.value; setDate(value); if (value) setCalendarMonth(dateKeyToLocalDate(value)); }} className="border border-[#3C3A37] bg-[#080706] px-3 py-2.5 text-sm text-white outline-none focus:border-[#c4871a]/60" />
+        </div>
+
+        <div className="flex flex-col gap-3 border border-[#c4871a]/12 bg-[#0F0D0B] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#5B5A59]">Vista de reservas</p>
+            <p className="mt-1 text-sm text-[#B2AAA7]">Calendario por defecto o tabla administrativa tradicional.</p>
+          </div>
+          <div className="grid grid-cols-2 border border-[#3C3A37] bg-[#080706] p-1 sm:w-auto">
+            <button type="button" onClick={() => setViewMode("calendar")} className={`px-4 py-2 text-xs font-semibold uppercase tracking-[.08em] transition-colors ${viewMode === "calendar" ? "bg-[#c4871a] text-[#080706]" : "text-[#B2AAA7] hover:text-white"}`}>Calendario</button>
+            <button type="button" onClick={() => setViewMode("table")} className={`px-4 py-2 text-xs font-semibold uppercase tracking-[.08em] transition-colors ${viewMode === "table" ? "bg-[#c4871a] text-[#080706]" : "text-[#B2AAA7] hover:text-white"}`}>Tabla</button>
+          </div>
         </div>
 
         {loading ? (
           <div className="flex justify-center py-20"><span className="h-7 w-7 animate-spin rounded-full border-2 border-[#c4871a] border-t-transparent" /></div>
         ) : reservations.length === 0 ? (
           <div className="border border-[#c4871a]/12 bg-[#171513] p-12 text-center text-sm text-[#B2AAA7]">No hay reservas para los filtros seleccionados.</div>
+        ) : viewMode === "calendar" ? (
+          <ReservationsCalendar
+            month={calendarMonth}
+            days={calendarDays}
+            reservationsByDate={reservationsByDate}
+            onMonthChange={setCalendarMonth}
+            onView={setViewing}
+          />
         ) : (
           <ReservationsTable reservations={reservations} onView={setViewing} onEdit={(reservation) => { setEditing(reservation); setFormOpen(true); }} onDelete={setDeleting} />
         )}
@@ -299,6 +378,80 @@ function MetricCard({ label, value }: { label: string; value: string }) {
     <div className="border border-[#c4871a]/12 bg-[#171513] p-5">
       <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#5B5A59]">{label}</p>
       <p className="mt-2 font-heading text-2xl font-bold uppercase text-white">{value}</p>
+    </div>
+  );
+}
+
+function ReservationsCalendar({ month, days, reservationsByDate, onMonthChange, onView }: {
+  month: Date;
+  days: CalendarDay[];
+  reservationsByDate: Map<string, Reservation[]>;
+  onMonthChange: (date: Date) => void;
+  onView: (reservation: Reservation) => void;
+}) {
+  const monthTitle = monthFormatter.format(month);
+
+  const changeMonth = (offset: number) => {
+    onMonthChange(new Date(month.getFullYear(), month.getMonth() + offset, 1));
+  };
+
+  return (
+    <div className="overflow-hidden border border-[#c4871a]/12 bg-[#0F0D0B]">
+      <div className="flex flex-col gap-3 border-b border-[#c4871a]/10 bg-[#171513] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#5B5A59]">Calendario mensual</p>
+          <h2 className="font-heading text-xl font-bold uppercase tracking-[.04em] text-white first-letter:uppercase">{monthTitle}</h2>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => changeMonth(-1)} className="border border-[#3C3A37] px-3 py-2 text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7] hover:border-[#c4871a]/50 hover:text-white">Anterior</button>
+          <button type="button" onClick={() => onMonthChange(new Date())} className="border border-[#c4871a]/35 px-3 py-2 text-xs font-semibold uppercase tracking-[.08em] text-[#c4871a] hover:bg-[#c4871a]/10">Hoy</button>
+          <button type="button" onClick={() => changeMonth(1)} className="border border-[#3C3A37] px-3 py-2 text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7] hover:border-[#c4871a]/50 hover:text-white">Siguiente</button>
+        </div>
+      </div>
+
+      <div className="hidden grid-cols-7 border-b border-[#c4871a]/10 bg-[#080706] md:grid">
+        {weekDays.map((day) => (
+          <div key={day} className="px-3 py-3 text-center text-[10px] font-semibold uppercase tracking-[.12em] text-[#5B5A59]">{day}</div>
+        ))}
+      </div>
+
+      <div className="grid gap-3 p-3 md:grid-cols-7 md:gap-0 md:p-0">
+        {days.map((day) => {
+          const dayReservations = reservationsByDate.get(day.key) ?? [];
+
+          return (
+            <div key={day.key} className={`min-h-[170px] border border-[#c4871a]/10 bg-[#171513] p-3 md:border-l-0 md:border-t-0 ${day.inMonth ? "" : "opacity-45"}`}>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div>
+                  <span className={`inline-flex h-7 min-w-7 items-center justify-center border px-2 text-xs font-bold ${day.isToday ? "border-[#c4871a] bg-[#c4871a] text-[#080706]" : "border-[#3C3A37] text-white"}`}>{day.date.getDate()}</span>
+                  <span className="ml-2 text-[10px] font-semibold uppercase tracking-[.08em] text-[#5B5A59] md:hidden">{weekDays[(day.date.getDay() + 6) % 7]}</span>
+                </div>
+                {dayReservations.length > 0 && <span className="text-[10px] font-semibold uppercase tracking-[.08em] text-[#c4871a]">{dayReservations.length}</span>}
+              </div>
+
+              {dayReservations.length > 0 ? (
+                <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                  {dayReservations.map((reservation) => (
+                    <button key={reservation.id} type="button" onClick={() => onView(reservation)} className="block w-full border border-[#c4871a]/12 bg-[#080706] p-2 text-left transition-colors hover:border-[#c4871a]/45 hover:bg-[#c4871a]/5 focus:outline-none focus:ring-2 focus:ring-[#c4871a]/30">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="truncate text-[11px] font-semibold text-[#c4871a]">{reservation.reservationCode}</span>
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${reservation.status === "confirmed" ? "bg-green-400" : reservation.status === "in_review" ? "bg-sky-300" : reservation.status === "completed" ? "bg-[#B2AAA7]" : "bg-[#d6a244]"}`} />
+                      </div>
+                      <p className="mt-1 truncate font-heading text-xs font-bold uppercase text-white">{reservation.firstName} {reservation.lastName}</p>
+                      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#B2AAA7]">
+                        <span>{reservation.reservationTimeLabel}</span>
+                        <span className="truncate text-[#5B5A59]">{reservation.services.length} serv.</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-[#5B5A59]">Sin reservas</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
