@@ -9,11 +9,14 @@ type Category = { id: string; name: string; slug: string; description: string | 
 type FlatCategory = { id: string; name: string; parentId: string | null };
 type Product = { id: string; name: string; slug: string; sku: string | null; description: string | null; quantity: number; minStock: number; location: string | null; isActive: boolean; imageUrl: string | null; categoryId: string; categoryName: string; updatedAt: string };
 type HistoryEntry = { id: string; action: string; field: string | null; oldValue: string | null; newValue: string | null; note: string | null; changedByName: string | null; createdAt: string };
+type StockMovement = { id: string; type: "in" | "out"; quantity: number; previousQuantity: number; newQuantity: number; note: string | null; changedByName: string | null; createdAt: string; product: { id: string; name: string; sku: string | null; category: { name: string } } };
 
 function formatDate(iso: string) { return new Date(iso).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" }); }
+function formatExactDate(iso: string) { return new Date(iso).toLocaleString("es-CO", { dateStyle: "full", timeStyle: "medium" }); }
 
 export default function InventarioPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [flatCats, setFlatCats] = useState<FlatCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +33,8 @@ export default function InventarioPage() {
   const [categoriesListOpen, setCategoriesListOpen] = useState(false);
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+  const [stockModalType, setStockModalType] = useState<"in" | "out" | null>(null);
+  const [movementsOpen, setMovementsOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildUrl = useCallback(() => {
@@ -44,13 +49,15 @@ export default function InventarioPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [prodRes, catRes, flatRes] = await Promise.all([
+      const [prodRes, allProdRes, catRes, flatRes] = await Promise.all([
         fetch(buildUrl()),
+        fetch("/api/dashboard/inventory/products"),
         fetch("/api/dashboard/inventory/categories"),
         fetch("/api/dashboard/inventory/categories?mode=select"),
       ]);
-      const [prodData, catData, flatData] = await Promise.all([prodRes.json(), catRes.json(), flatRes.json()]);
+      const [prodData, allProdData, catData, flatData] = await Promise.all([prodRes.json(), allProdRes.json(), catRes.json(), flatRes.json()]);
       setProducts(prodData.products ?? []);
+      setAllProducts(allProdData.products ?? []);
       setCategories(catData.categories ?? []);
       setFlatCats(flatData.categories ?? []);
     } catch { toast.error("No se pudieron cargar los datos"); }
@@ -75,12 +82,15 @@ export default function InventarioPage() {
   return (
     <AdminLayout title="Inventario">
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
           <div>
             <h1 className="font-heading text-2xl font-bold uppercase text-white">Inventario</h1>
             <p className="text-sm text-[#B2AAA7]">Gestiona categorías, productos, existencias e historial de movimientos.</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => setStockModalType("in")} className="border border-green-500/40 bg-green-500/10 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-green-400 hover:bg-green-500/15 transition-colors">+ Entrada</button>
+            <button type="button" onClick={() => setStockModalType("out")} className="border border-[#B63A2B]/50 bg-[#B63A2B]/10 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#ff6b5f] hover:bg-[#B63A2B]/15 transition-colors">- Salida</button>
+            <button type="button" onClick={() => setMovementsOpen(true)} className="border border-[#3C3A37] px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#B2AAA7] hover:border-[#c4871a]/50 hover:text-white transition-colors">Movimientos</button>
             <button type="button" onClick={openCreateCat} className="border border-[#c4871a]/40 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#c4871a] hover:bg-[#c4871a]/10 transition-colors">+ Crear categoría</button>
             <button type="button" onClick={() => { setEditingProduct(null); setProductFormOpen(true); }} className="bg-[#c4871a] px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#080706] hover:bg-[#d6a244] transition-colors">+ Crear Producto</button>
           </div>
@@ -124,6 +134,8 @@ export default function InventarioPage() {
       {categoriesListOpen && <CategoriesListModal categories={categories} onClose={() => setCategoriesListOpen(false)} onEdit={(c) => { setEditingCategory(c); setCategoriesListOpen(false); setCategoryFormOpen(true); }} onDelete={setDeletingCategory} onNew={() => { setCategoriesListOpen(false); openCreateCat(); }} />}
       {deletingCategory && <DeleteCategoryModal category={deletingCategory} onCancel={() => setDeletingCategory(null)} onConfirm={async () => { const res = await fetch(`/api/dashboard/inventory/categories/${deletingCategory.id}`, { method: "DELETE" }); const data = await res.json(); if (!res.ok) { toast.error(data.error || "No se pudo eliminar"); } else { toast.success("Categoría eliminada"); } setDeletingCategory(null); fetchData(); }} />}
       {historyProduct && <ProductHistoryModal productId={historyProduct.id} productName={historyProduct.name} onClose={() => setHistoryProduct(null)} />}
+      {stockModalType && <StockMovementModal type={stockModalType} products={allProducts} onClose={() => setStockModalType(null)} onSaved={() => { setStockModalType(null); fetchData(); }} />}
+      {movementsOpen && <StockMovementsModal onClose={() => setMovementsOpen(false)} />}
     </AdminLayout>
   );
 }
@@ -372,6 +384,127 @@ function ProductFormModal({ product, allCats, onClose, onSaved }: { product: Pro
     </div>
     <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} className="w-full border border-[#c4871a]/20 bg-transparent px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-[#B2AAA7] hover:border-[#c4871a]/50 hover:text-white transition-all sm:w-auto">Cancelar</button><button type="button" onClick={submit} disabled={saving} className="w-full bg-[#c4871a] px-5 py-3 text-xs font-bold uppercase tracking-[.12em] text-[#080706] hover:bg-[#d6a244] transition-all disabled:opacity-60 sm:w-auto">{saving ? "Guardando..." : "Guardar"}</button></div>
   </div></ModalOverlay>;
+}
+
+function ProductStockSelect({ products, value, onChange }: { products: Product[]; value: string; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fn = (event: MouseEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, []);
+
+  const selected = products.find((product) => product.id === value);
+  const filtered = products.filter((product) => {
+    const text = `${product.name} ${product.sku ?? ""} ${product.categoryName}`.toLowerCase();
+    return text.includes(search.toLowerCase());
+  });
+
+  return <div ref={ref} className="relative">
+    <button type="button" onClick={() => setOpen(!open)} className="relative w-full border border-[#c4871a]/20 bg-[#050403] px-3 py-3 pr-9 text-left text-sm text-white focus:border-[#c4871a]/60 focus:outline-none transition-colors">
+      {selected ? <span>{selected.name} <span className="text-[#5B5A59]">Stock: {selected.quantity}</span></span> : <span className="text-[#5E5A57]">Buscar y seleccionar producto...</span>}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={`absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5B5A59] transition-transform ${open ? "rotate-180" : ""}`}><polyline points="6 9 12 15 18 9" /></svg>
+    </button>
+    {open && <div className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto border border-[#c4871a]/15 bg-[#171513] shadow-2xl">
+      <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} className="sticky top-0 w-full border-b border-[#c4871a]/10 bg-[#0F0D0B] px-3 py-2.5 text-sm text-white placeholder-[#5E5A57] focus:outline-none" placeholder="Buscar por nombre, SKU o categoría..." autoFocus />
+      {filtered.length === 0 ? <p className="px-3 py-4 text-center text-xs text-[#5B5A59]">No se encontraron productos</p> : filtered.map((product) => (
+        <button key={product.id} type="button" onClick={() => { onChange(product.id); setOpen(false); setSearch(""); }} className={`block w-full px-3 py-2.5 text-left transition-colors hover:bg-[#c4871a]/10 ${product.id === value ? "bg-[#c4871a]/5 text-[#c4871a]" : "text-[#B2AAA7]"}`}>
+          <span className="block text-sm font-semibold text-white">{product.name}</span>
+          <span className="mt-0.5 block text-[11px] text-[#5B5A59]">{product.categoryName} · SKU: {product.sku || "Sin SKU"} · Stock actual: {product.quantity}</span>
+        </button>
+      ))}
+    </div>}
+  </div>;
+}
+
+function StockMovementModal({ type, products, onClose, onSaved }: { type: "in" | "out"; products: Product[]; onClose: () => void; onSaved: () => void }) {
+  const [productId, setProductId] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const selected = products.find((product) => product.id === productId);
+  const isEntry = type === "in";
+  const inp = "w-full border border-[#c4871a]/20 bg-[#050403] px-3 py-3 text-sm text-white placeholder-[#5E5A57] focus:border-[#c4871a]/60 focus:bg-[#0B0A08] focus:outline-none transition-colors";
+
+  const submit = async () => {
+    if (!productId) { toast.error("Selecciona un producto"); return; }
+    if (Number(quantity) < 1) { toast.error("La cantidad debe ser mayor a 0"); return; }
+    if (!isEntry && selected && Number(quantity) > selected.quantity) { toast.error("La salida supera el stock disponible"); return; }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/dashboard/inventory/movements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, type, quantity: Number(quantity), note: note || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo registrar el movimiento");
+      toast.success(isEntry ? "Entrada registrada correctamente" : "Salida registrada correctamente");
+      onSaved();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo registrar el movimiento"); }
+    finally { setSaving(false); }
+  };
+
+  return <ModalOverlay onClose={onClose}>
+    <h2 className={`font-heading text-xl font-bold uppercase tracking-[.04em] mb-2 ${isEntry ? "text-green-400" : "text-[#ff6b5f]"}`}>{isEntry ? "Entrada de inventario" : "Salida de inventario"}</h2>
+    <p className="mb-6 text-sm text-[#B2AAA7]">Selecciona el producto, indica la cantidad y registra el movimiento en el stock.</p>
+    <div className="space-y-5">
+      <Field label="Producto *"><ProductStockSelect products={products} value={productId} onChange={setProductId} /></Field>
+      {selected && <div className="border border-[#c4871a]/10 bg-[#080706] px-3 py-2 text-xs text-[#B2AAA7]">Stock actual: <span className="font-bold text-white">{selected.quantity}</span>{!isEntry && <span className="ml-2 text-[#5B5A59]">Disponible para salida</span>}</div>}
+      <Field label="Cantidad *"><input type="number" min={1} max={!isEntry && selected ? selected.quantity : undefined} value={quantity} onChange={(event) => setQuantity(event.target.value)} className={inp} /></Field>
+      <Field label="Detalle / nota"><textarea value={note} onChange={(event) => setNote(event.target.value)} className={`${inp} min-h-[90px] resize-none`} placeholder={isEntry ? "Ej: compra, reposición, ajuste positivo..." : "Ej: uso interno, venta, ajuste negativo..."} /></Field>
+    </div>
+    <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <button type="button" onClick={onClose} className="w-full border border-[#c4871a]/20 bg-transparent px-5 py-3 text-xs font-bold uppercase tracking-[.1em] text-[#B2AAA7] hover:border-[#c4871a]/50 hover:text-white transition-all sm:w-auto">Cancelar</button>
+      <button type="button" onClick={submit} disabled={saving} className={`w-full px-5 py-3 text-xs font-bold uppercase tracking-[.1em] transition-all disabled:opacity-60 sm:w-auto ${isEntry ? "bg-green-500 text-[#051107] hover:bg-green-400" : "bg-[#B63A2B] text-white hover:bg-[#c94a3a]"}`}>{saving ? "Registrando..." : isEntry ? "Registrar entrada" : "Registrar salida"}</button>
+    </div>
+  </ModalOverlay>;
+}
+
+function StockMovementsModal({ onClose }: { onClose: () => void }) {
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/dashboard/inventory/movements")
+      .then((res) => res.json())
+      .then((data) => setMovements(data.movements ?? []))
+      .catch(() => toast.error("No se pudieron cargar los movimientos"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return <ModalOverlay onClose={onClose}>
+    <div className="max-h-[82vh] overflow-y-auto">
+      <h2 className="font-heading text-xl font-bold uppercase tracking-[.04em] text-white mb-1">Movimientos de inventario</h2>
+      <p className="mb-5 text-sm text-[#B2AAA7]">Entradas y salidas registradas con usuario, cantidad, fecha y stock resultante.</p>
+      {loading ? <div className="flex justify-center py-10"><span className="h-7 w-7 animate-spin rounded-full border-2 border-[#c4871a] border-t-transparent" /></div> : movements.length === 0 ? <p className="border border-[#c4871a]/10 bg-[#080706] p-6 text-center text-sm text-[#B2AAA7]">Sin movimientos registrados.</p> : (
+        <div className="space-y-3">
+          {movements.map((movement) => {
+            const isEntry = movement.type === "in";
+            return <div key={movement.id} className="border border-[#c4871a]/10 bg-[#080706] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-heading text-sm font-bold uppercase text-white">{movement.product.name}</p>
+                  <p className="mt-0.5 text-xs text-[#5B5A59]">{movement.product.category.name} · SKU: {movement.product.sku || "Sin SKU"}</p>
+                </div>
+                <span className={`shrink-0 border px-2 py-1 text-[10px] font-bold uppercase tracking-[.1em] ${isEntry ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-[#B63A2B]/40 bg-[#B63A2B]/10 text-[#ff6b5f]"}`}>{isEntry ? "+ Entrada" : "- Salida"}</span>
+              </div>
+              <div className="mt-3 grid gap-2 text-xs text-[#B2AAA7] sm:grid-cols-2">
+                <p>Cantidad: <span className={isEntry ? "font-bold text-green-400" : "font-bold text-[#ff6b5f]"}>{isEntry ? "+" : "-"}{movement.quantity}</span></p>
+                <p>Stock: <span className="text-white">{movement.previousQuantity} &rarr; {movement.newQuantity}</span></p>
+                <p>Usuario: <span className="text-white">{movement.changedByName || "No registrado"}</span></p>
+                <p>Fecha: <span className="text-white">{formatExactDate(movement.createdAt)}</span></p>
+              </div>
+              {movement.note && <p className="mt-3 border-t border-[#c4871a]/10 pt-3 text-xs text-[#5B5A59]">{movement.note}</p>}
+            </div>;
+          })}
+        </div>
+      )}
+    </div>
+  </ModalOverlay>;
 }
 
 function DeleteProductModal({ product, onCancel, onConfirm }: { product: Product; onCancel: () => void; onConfirm: () => void }) {

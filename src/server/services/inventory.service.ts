@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { CategoryInput, ProductInput, ProductQueryInput } from "@/lib/validations/inventory";
+import type { CategoryInput, ProductInput, ProductQueryInput, StockMovementInput } from "@/lib/validations/inventory";
 
 function slugify(text: string) {
   return text
@@ -228,6 +228,59 @@ export const inventoryService = {
     });
     await prisma.inventoryProductHistory.create({
       data: { productId: id, action: "deleted", note: "Producto desactivado", changedByName },
+    });
+  },
+
+  async createStockMovement(input: StockMovementInput, changedByName: string) {
+    const product = await prisma.inventoryProduct.findUnique({ where: { id: input.productId } });
+    if (!product || product.deletedAt) throw new Error("Producto no encontrado");
+
+    const nextQuantity = input.type === "in" ? product.quantity + input.quantity : product.quantity - input.quantity;
+    if (nextQuantity < 0) throw new Error("La cantidad de salida supera el stock disponible");
+
+    const action = input.type === "in" ? "stock_in" : "stock_out";
+    const note = input.note?.trim() || (input.type === "in" ? "Entrada de inventario" : "Salida de inventario");
+
+    const [, history] = await prisma.$transaction([
+      prisma.inventoryProduct.update({ where: { id: product.id }, data: { quantity: nextQuantity } }),
+      prisma.inventoryProductHistory.create({
+        data: {
+          productId: product.id,
+          action,
+          field: "quantity",
+          oldValue: String(product.quantity),
+          newValue: String(nextQuantity),
+          note: `${note} | Cantidad: ${input.quantity}`,
+          changedByName,
+        },
+      }),
+    ]);
+
+    return { product: { ...product, quantity: nextQuantity }, history, movedQuantity: input.quantity };
+  },
+
+  async listStockMovements(limit = 80) {
+    const movements = await prisma.inventoryProductHistory.findMany({
+      where: { action: { in: ["stock_in", "stock_out"] } },
+      include: { product: { select: { id: true, name: true, sku: true, category: { select: { name: true } } } } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    return movements.map((movement) => {
+      const oldQuantity = Number(movement.oldValue ?? 0);
+      const newQuantity = Number(movement.newValue ?? 0);
+      return {
+        id: movement.id,
+        type: movement.action === "stock_in" ? "in" : "out",
+        quantity: Math.abs(newQuantity - oldQuantity),
+        previousQuantity: oldQuantity,
+        newQuantity,
+        note: movement.note,
+        changedByName: movement.changedByName,
+        createdAt: movement.createdAt.toISOString(),
+        product: movement.product,
+      };
     });
   },
 

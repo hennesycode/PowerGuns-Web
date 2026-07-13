@@ -30,6 +30,14 @@ export const productQuerySchema = z.object({
   stock: z.enum(["all", "low", "none"]).optional().default("all"),
 });
 
+export const stockMovementSchema = z.object({
+  productId: z.string().min(1, "Producto requerido"),
+  type: z.enum(["in", "out"]),
+  quantity: z.coerce.number().int().min(1, "La cantidad debe ser mayor a 0"),
+  note: z.string().max(500).optional().nullable(),
+});
+
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type ProductInput = z.infer<typeof productSchema>;
 export type ProductQueryInput = z.infer<typeof productQuerySchema>;
+export type StockMovementInput = z.infer<typeof stockMovementSchema>;
