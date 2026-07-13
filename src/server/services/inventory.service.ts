@@ -84,7 +84,7 @@ export const inventoryService = {
   },
 
   async deleteCategory(id: string) {
-    const productCount = await prisma.inventoryProduct.count({ where: { categoryId: id } });
+    const productCount = await prisma.inventoryProduct.count({ where: { categoryId: id, deletedAt: null } });
     if (productCount > 0) throw new Error("No puedes eliminar esta categoría porque tiene productos asociados.");
     const childCount = await prisma.inventoryCategory.count({ where: { parentId: id } });
     if (childCount > 0) throw new Error("No puedes eliminar esta categoría porque tiene subcategorías asociadas.");
