@@ -39,6 +39,16 @@ const steps: Array<{ id: Step; short: string; label: string }> = [
   { id: 3, short: "Pago", label: "Confirmación y pago" },
 ];
 
+function ColombiaFlagIcon() {
+  return (
+    <svg viewBox="0 0 24 18" aria-hidden="true" className="h-3.5 w-5 shrink-0 overflow-hidden rounded-[2px]">
+      <rect width="24" height="9" fill="#FCD116" />
+      <rect y="9" width="24" height="4.5" fill="#003893" />
+      <rect y="13.5" width="24" height="4.5" fill="#CE1126" />
+    </svg>
+  );
+}
+
 const emptyForm: ReservationFormData = {
   firstName: "",
   lastName: "",
@@ -204,6 +214,10 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
 
   const handlePhoneChange = (value: string) => {
     setField("phone", value.replace(/\D/g, "").slice(0, 10));
+  };
+
+  const handleIdentificationNumberChange = (value: string) => {
+    setField("identificationNumber", value.replace(/\D/g, "").slice(0, 11));
   };
 
   const validateCustomer = () => {
@@ -430,7 +444,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 <label htmlFor="identificationNumber" className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">
                   Número de identificación *
                 </label>
-                <input id="identificationNumber" name="identificationNumber" type="text" value={form.identificationNumber} onChange={(e) => setField("identificationNumber", e.target.value)} className={inputClass("identificationNumber")} placeholder="Ej: 1000000001" />
+                <input id="identificationNumber" name="identificationNumber" type="text" inputMode="numeric" maxLength={11} value={form.identificationNumber} onChange={(e) => handleIdentificationNumberChange(e.target.value)} className={inputClass("identificationNumber")} placeholder="Ej: 1000000001" />
                 {fieldError("identificationNumber")}
               </div>
             </div>
@@ -449,7 +463,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 </label>
                 <div className={`flex min-w-0 items-center border bg-[#080706] transition-colors focus-within:border-[#c4871a]/60 focus-within:ring-2 focus-within:ring-[#c4871a]/20 ${errors.phone ? "border-[#B63A2B]/60" : "border-[#3C3A37]"}`}>
                   <span className="flex shrink-0 items-center gap-2 border-r border-[#3C3A37] px-3 py-3 text-sm text-[#B2AAA7]">
-                    <span aria-hidden="true" className="text-base leading-none">🇨🇴</span>
+                    <ColombiaFlagIcon />
                     <span className="font-semibold">+57</span>
                   </span>
                   <input id="phone" name="phone" autoComplete="tel-national" type="text" inputMode="numeric" pattern="3[0-9]{9}" maxLength={10} value={form.phone} onChange={(e) => handlePhoneChange(e.target.value)} className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-white placeholder:text-[#5B5A59] focus:outline-none" placeholder="3057138140" />
@@ -461,7 +475,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
 
             <div>
               <label htmlFor="address" className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">
-                Dirección completa *
+                Dirección completa <span className="text-[10px] text-[#5B5A59]">(opcional)</span>
               </label>
               <input id="address" name="address" autoComplete="street-address" type="text" value={form.address} onChange={(e) => setField("address", e.target.value)} className={inputClass("address")} placeholder="Calle, carrera, número, barrio, referencia" />
               {fieldError("address")}
@@ -470,20 +484,20 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label htmlFor="country" className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">
-                  País
+                  País <span className="text-[10px] text-[#5B5A59]">(opcional)</span>
                 </label>
                 <input id="country" name="country" type="text" value="Colombia" disabled className="w-full cursor-not-allowed border border-[#3C3A37] bg-[#080706] px-3 py-3 text-sm text-[#5B5A59] opacity-70" />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">
-                  Departamento *
+                  Departamento <span className="text-[10px] text-[#5B5A59]">(opcional)</span>
                 </label>
                 <SearchableSelect options={colombiaDepartments.map((d) => d.name)} value={form.department} onChange={(value) => { setForm((prev) => ({ ...prev, department: value, city: "" })); clearError("department"); }} placeholder="Seleccionar..." label="Departamento" />
                 {fieldError("department")}
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">
-                  Ciudad *
+                  Ciudad <span className="text-[10px] text-[#5B5A59]">(opcional)</span>
                 </label>
                 <SearchableSelect options={cities} value={form.city} onChange={(value) => setField("city", value)} placeholder={form.department ? "Seleccionar..." : "Primero departamento"} disabled={!form.department} label="Ciudad" />
                 {fieldError("city")}
@@ -606,7 +620,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#5B5A59]">Cliente</p>
                 <p className="mt-1 font-heading text-sm font-bold uppercase tracking-[.04em] text-white">{form.firstName} {form.lastName}</p>
                 <p className="mt-1 text-xs text-[#B2AAA7]">{form.email}</p>
-                <p className="text-xs text-[#B2AAA7]">🇨🇴 +57 {form.phone}</p>
+                <p className="flex items-center gap-1.5 text-xs text-[#B2AAA7]"><ColombiaFlagIcon /> +57 {form.phone}</p>
               </div>
               <div className="border border-[#c4871a]/12 bg-[#080706] p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#5B5A59]">Fecha y hora</p>
@@ -619,8 +633,8 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
 
             <div className="border border-[#c4871a]/12 bg-[#080706] p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#5B5A59]">Ubicación</p>
-              <p className="mt-1 text-sm text-white">{form.address}</p>
-              <p className="text-xs text-[#B2AAA7]">{form.city}, {form.department}, Colombia</p>
+              <p className="mt-1 text-sm text-white">{form.address || "No especificada"}</p>
+              <p className="text-xs text-[#B2AAA7]">{[form.city, form.department, "Colombia"].filter(Boolean).join(", ")}</p>
             </div>
 
             {form.scheduleNotes && (

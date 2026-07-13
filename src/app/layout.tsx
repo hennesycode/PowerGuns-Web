@@ -29,6 +29,11 @@ export const metadata: Metadata = {
   description:
     "Polígono de tiro certificado en Villavicencio. Armería premium, instructores certificados y el ambiente táctico más profesional de los Llanos Orientales.",
   keywords: ["polígono de tiro", "Villavicencio", "tiro deportivo", "power guns", "armería"],
+  icons: {
+    icon: "/logo.jpg",
+    shortcut: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
   openGraph: {
     title: "Power Guns Polígono S.A.S.",
     description:

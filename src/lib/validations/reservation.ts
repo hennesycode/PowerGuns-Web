@@ -23,16 +23,20 @@ export const reservationCustomerSchema = z.object({
     .min(2, "Mínimo 2 caracteres")
     .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, "Solo letras y espacios"),
   identificationType: identificationTypeSchema,
-  identificationNumber: z.string().min(4, "Mínimo 4 caracteres").max(20),
+  identificationNumber: z
+    .string()
+    .min(4, "Mínimo 4 dígitos")
+    .max(11, "Máximo 11 dígitos")
+    .regex(/^\d+$/, "Solo números"),
   email: z.string().email("Correo electrónico inválido"),
   phone: z
     .string()
     .length(10, "Debe tener 10 dígitos")
     .regex(/^3\d{9}$/, "Debe iniciar en 3 y tener 10 dígitos"),
-  address: z.string().min(5, "Mínimo 5 caracteres"),
+  address: z.string().trim().max(200, "Máximo 200 caracteres").default(""),
   country: z.string().default("Colombia"),
-  department: z.string().min(1, "Selecciona un departamento"),
-  city: z.string().min(1, "Selecciona una ciudad"),
+  department: z.string().trim().max(80, "Máximo 80 caracteres").default(""),
+  city: z.string().trim().max(80, "Máximo 80 caracteres").default(""),
 });
 
 export const reservationScheduleSchema = z.object({
