@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { SiteShell } from "@/components/shared/SiteShell";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 
@@ -72,17 +71,6 @@ export function PublicGalleryPage() {
       </div>
 
       <SiteShell className="py-12 md:py-16">
-        <div className="mb-8 flex justify-center">
-          <Link href="/" className="inline-block no-underline">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-[#c4871a]/30 bg-[#0F0D0B]">
-              <Image src="/logo.jpg" alt="Power Guns" width={56} height={56} className="h-full w-full object-contain" />
-            </div>
-            <div className="mt-3 text-center font-heading text-sm font-extrabold uppercase tracking-widest text-white">
-              POWER <span className="text-[#c4871a]">GUNS</span>
-            </div>
-          </Link>
-        </div>
-
         <SectionHeader
           eyebrow="Galería completa"
           title={<>EXPERIENCIA <span className="text-[#c4871a]">POWER GUNS</span></>}
