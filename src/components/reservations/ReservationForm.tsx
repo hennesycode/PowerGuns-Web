@@ -116,7 +116,6 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [businessHours, setBusinessHours] = useState<BusinessHourData[]>([]);
-  const [businessHoursLoading, setBusinessHoursLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -171,9 +170,6 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
       })
       .catch(() => {
         if (!cancelled) toast.error("No se pudieron cargar los horarios de atención");
-      })
-      .finally(() => {
-        if (!cancelled) setBusinessHoursLoading(false);
       });
 
     return () => {
@@ -575,11 +571,6 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 })}
               </div>
               {fieldError("reservationDate")}
-              <p className="mt-3 text-xs text-[#5B5A59]">
-                {businessHoursLoading
-                  ? "Cargando horarios de atención..."
-                  : "Disponibilidad según los horarios configurados en el dashboard."}
-              </p>
             </div>
 
             <div>
