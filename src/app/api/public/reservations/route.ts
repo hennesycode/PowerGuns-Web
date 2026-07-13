@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { publicReservationSchema } from "@/lib/validations/reservation";
+import { paymentMethodService } from "@/server/services/payment-method.service";
 import { reservationService } from "@/server/services/reservation.service";
 
 export async function POST(request: Request) {
@@ -12,13 +13,30 @@ export async function POST(request: Request) {
     }
 
     const reservation = await reservationService.create(validation.data);
+    const paymentMethod = validation.data.paymentMethodId
+      ? await paymentMethodService.getActiveById(validation.data.paymentMethodId)
+      : null;
     return NextResponse.json(
       {
         success: true,
         reservation: {
           id: reservation.id,
           reservationCode: reservation.reservationCode,
+          firstName: reservation.firstName,
+          lastName: reservation.lastName,
+          reservationDate: reservation.reservationDate,
+          reservationTimeLabel: reservation.reservationTimeLabel,
           status: reservation.status,
+          paymentMethodLabel: reservation.paymentMethodLabel,
+          paymentMethod: paymentMethod
+            ? {
+                type: paymentMethod.type,
+                providerLabel: paymentMethod.providerLabel,
+                accountNumber: paymentMethod.accountNumber,
+                accountHolderName: paymentMethod.accountHolderName,
+                identificationNumber: paymentMethod.identificationNumber,
+              }
+            : null,
         },
       },
       { status: 201 },
