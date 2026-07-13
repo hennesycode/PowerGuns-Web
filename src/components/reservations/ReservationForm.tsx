@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { useCartContext } from "@/context/CartContext";
 import { colombiaDepartments, getCities } from "@/data/colombia-locations";
-import { BASE_RESERVATION_SLOTS } from "@/lib/timezone";
+import type { BusinessHourData } from "@/lib/timezone";
 import {
   reservationCustomerSchema,
   reservationScheduleSchema,
@@ -28,11 +28,6 @@ type AvailabilitySlot = {
 };
 
 const DRAFT_KEY = "powerguns_reservation_draft";
-const AVAILABLE_TIMES = BASE_RESERVATION_SLOTS.map((slot) => ({
-  value: slot.time,
-  label: slot.label,
-}));
-
 const steps: Array<{ id: Step; short: string; label: string }> = [
   { id: 1, short: "Datos", label: "Datos de reserva" },
   { id: 2, short: "Fecha", label: "Fecha y hora" },
@@ -92,14 +87,15 @@ function parseDateKey(value: string) {
   return new Date(year, month - 1, day);
 }
 
-function isDateAvailable(date: Date) {
+function isDateAvailable(date: Date, businessHours: BusinessHourData[]) {
   const normalized = new Date(date);
   normalized.setHours(0, 0, 0, 0);
-  return normalized >= getTodayStart() && normalized.getDay() !== 0;
+  const dayHours = businessHours.find((day) => day.dayOfWeek === normalized.getDay());
+  return normalized >= getTodayStart() && !!dayHours?.isOpen && dayHours.slots.length > 0;
 }
 
-function getTimeLabel(value: string) {
-  return AVAILABLE_TIMES.find((time) => time.value === value)?.label ?? value;
+function getTimeLabel(value: string, slots: AvailabilitySlot[]) {
+  return slots.find((slot) => slot.time === value)?.label ?? value;
 }
 
 function buildFieldErrors(issues: Array<{ path: PropertyKey[]; message: string }>) {
@@ -119,6 +115,8 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   const [draftReady, setDraftReady] = useState(false);
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [businessHours, setBusinessHours] = useState<BusinessHourData[]>([]);
+  const [businessHoursLoading, setBusinessHoursLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -159,6 +157,29 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     if (!draftReady) return;
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...form, currentStep: step }));
   }, [draftReady, form, step]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/business-hours")
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error al consultar horarios");
+        return data.hours as BusinessHourData[];
+      })
+      .then((hours) => {
+        if (!cancelled) setBusinessHours(hours);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar los horarios de atención");
+      })
+      .finally(() => {
+        if (!cancelled) setBusinessHoursLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!form.reservationDate) {
@@ -245,7 +266,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     }
 
     const date = parseDateKey(form.reservationDate);
-    if (!date || !isDateAvailable(date)) {
+    if (!date || !isDateAvailable(date, businessHours)) {
       setErrors({ reservationDate: "Selecciona una fecha disponible" });
       toast.error("La fecha seleccionada no está disponible");
       return false;
@@ -305,7 +326,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   };
 
   const selectDate = (date: Date) => {
-    if (!isDateAvailable(date)) return;
+    if (!isDateAvailable(date, businessHours)) return;
     setForm((prev) => ({
       ...prev,
       reservationDate: getDateKey(date),
@@ -528,7 +549,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 {calendarCells.map((date, index) => {
                   if (!date) return <div key={`empty-${index}`} className="aspect-square" />;
                   const key = getDateKey(date);
-                  const available = isDateAvailable(date);
+                  const available = isDateAvailable(date, businessHours);
                   const selected = form.reservationDate === key;
                   const isToday = key === getDateKey(today);
                   return (
@@ -554,7 +575,11 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 })}
               </div>
               {fieldError("reservationDate")}
-              <p className="mt-3 text-xs text-[#5B5A59]">Disponibilidad temporal: lunes a sábado. Domingos y fechas pasadas no disponibles.</p>
+              <p className="mt-3 text-xs text-[#5B5A59]">
+                {businessHoursLoading
+                  ? "Cargando horarios de atención..."
+                  : "Disponibilidad según los horarios configurados en el dashboard."}
+              </p>
             </div>
 
             <div>
@@ -563,7 +588,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
               </label>
               {form.reservationDate ? (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="listbox" aria-label="Horarios disponibles">
-                  {(availabilitySlots.length > 0 ? availabilitySlots : AVAILABLE_TIMES.map((time) => ({ ...time, time: time.value, available: false, reason: "closed" as const }))).map((slot) => {
+                  {availabilitySlots.map((slot) => {
                     const selected = form.reservationTime === slot.time;
                     const disabled = !slot.available || availabilityLoading;
                     const reasonLabel = slot.reason === "past"
@@ -594,6 +619,11 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                       </button>
                     );
                   })}
+                  {!availabilityLoading && availabilitySlots.length === 0 && (
+                    <div className="col-span-full border border-dashed border-[#3C3A37] bg-[#080706] px-4 py-5 text-center text-sm text-[#5B5A59]">
+                      No hay horarios configurados para este día.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="border border-dashed border-[#3C3A37] bg-[#080706] px-4 py-5 text-center text-sm text-[#5B5A59]">
@@ -627,7 +657,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 <p className="mt-1 font-heading text-sm font-bold uppercase tracking-[.04em] text-white">
                   {selectedDate ? new Intl.DateTimeFormat("es-CO", { dateStyle: "full" }).format(selectedDate) : "Fecha pendiente"}
                 </p>
-                <p className="mt-1 text-xs text-[#B2AAA7]">{form.reservationTime ? getTimeLabel(form.reservationTime) : "Hora pendiente"}</p>
+                <p className="mt-1 text-xs text-[#B2AAA7]">{form.reservationTime ? getTimeLabel(form.reservationTime, availabilitySlots) : "Hora pendiente"}</p>
               </div>
             </div>
 

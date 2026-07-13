@@ -229,7 +229,7 @@ async function ensureSlotAvailable(
   const dayOfWeek = (await import("@/lib/timezone")).getDayOfWeek(date);
   const businessHours = await businessHoursService.getBusinessHourData(dayOfWeek);
   if (!businessHours || !businessHours.isOpen) {
-    throw new Error("No hay disponibilidad los domingos");
+    throw new Error("No hay disponibilidad para este día");
   }
   if (!isTimeWithinBusinessHours(time, businessHours)) {
     throw new Error("Hora inválida o fuera del horario de atención");
