@@ -88,7 +88,10 @@ export const inventoryService = {
     if (productCount > 0) throw new Error("No puedes eliminar esta categoría porque tiene productos asociados.");
     const childCount = await prisma.inventoryCategory.count({ where: { parentId: id } });
     if (childCount > 0) throw new Error("No puedes eliminar esta categoría porque tiene subcategorías asociadas.");
-    await prisma.inventoryCategory.delete({ where: { id } });
+    await prisma.$transaction([
+      prisma.inventoryProduct.deleteMany({ where: { categoryId: id, deletedAt: { not: null } } }),
+      prisma.inventoryCategory.delete({ where: { id } }),
+    ]);
   },
 
   // ---- Products ----
