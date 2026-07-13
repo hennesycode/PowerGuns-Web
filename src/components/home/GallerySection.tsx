@@ -110,13 +110,7 @@ export function GallerySection() {
                     ) : (
                       <video src={item.fileUrl} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" muted playsInline loop autoPlay preload="metadata" />
                     )}
-                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,4,3,.04)_20%,rgba(5,4,3,.84)_100%)]" />
-                    <div className="absolute inset-x-0 bottom-0 p-4">
-                      <span className="mb-3 inline-flex bg-[#c4871a]/90 px-2.5 py-0.5 font-['Rajdhani',sans-serif] text-[10px] font-bold uppercase tracking-[.2em] text-[#080706]">
-                        {item.mediaType === "image" ? "Imagen" : "Video"}
-                      </span>
-                      <h3 className="line-clamp-2 font-heading text-base font-black uppercase tracking-[.04em] text-white">{item.name}</h3>
-                    </div>
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,4,3,0)_45%,rgba(5,4,3,.28)_100%)]" />
                   </div>
                 </article>
               ))}

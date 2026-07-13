@@ -105,12 +105,6 @@ export function PublicGalleryPage() {
                     ) : (
                       <video src={item.fileUrl} className="h-auto w-full" controls playsInline preload="metadata" />
                     )}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(5,4,3,.82))] p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                      <span className="mb-2 inline-flex bg-[#c4871a]/90 px-2 py-0.5 font-['Rajdhani',sans-serif] text-[10px] font-bold uppercase tracking-[.18em] text-[#080706]">
-                        {item.mediaType === "image" ? "Imagen" : "Video"}
-                      </span>
-                      <h2 className="font-heading text-sm font-bold uppercase tracking-[.08em] text-white">{item.name}</h2>
-                    </div>
                   </div>
                 </article>
               ))}
