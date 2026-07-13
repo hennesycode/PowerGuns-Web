@@ -17,6 +17,15 @@ import type {
   UpdateReservationInput,
 } from "@/lib/validations/reservation";
 
+const PAYMENT_PROVIDER_LABELS: Record<string, string> = {
+  cash: "Pago en efectivo",
+  daviplata: "Daviplata",
+  nequi: "Nequi",
+  bancolombia: "Bancolombia",
+  davivienda: "Davivienda",
+  bbva: "BBVA",
+};
+
 const BLOCKING_STATUSES: ReservationStatusInput[] = [
   "pending",
   "in_review",
@@ -61,6 +70,7 @@ function serializeReservation(reservation: ReservationWithItems) {
     discount: reservation.discount,
     total: reservation.total,
     couponCode: reservation.couponCode,
+    paymentMethodLabel: reservation.paymentMethodLabel,
     createdAt: reservation.createdAt.toISOString(),
     updatedAt: reservation.updatedAt.toISOString(),
     services: reservation.items.map((item) => ({
@@ -159,6 +169,25 @@ async function resolveUser(
       passwordHash,
     },
   });
+}
+
+async function resolvePaymentMethod(
+  tx: Prisma.TransactionClient,
+  input: PublicReservationInput | DashboardReservationInput | UpdateReservationInput,
+  required: boolean,
+) {
+  const activeMethods = await tx.paymentMethod.findMany({ where: { isActive: true } });
+  if (activeMethods.length === 0) return null;
+
+  if (!input.paymentMethodId) {
+    if (required) throw new Error("Selecciona un método de pago");
+    return null;
+  }
+
+  const method = activeMethods.find((item) => item.id === input.paymentMethodId);
+  if (!method) throw new Error("Método de pago no disponible");
+
+  return PAYMENT_PROVIDER_LABELS[method.provider] ?? method.provider;
 }
 
 async function calculateTotals(
@@ -320,6 +349,7 @@ export const reservationService = {
     return prisma.$transaction(async (tx) => {
       await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime);
       const user = await resolveUser(tx, input);
+      const paymentMethodLabel = await resolvePaymentMethod(tx, input, !("status" in input));
       const totals = await calculateTotals(tx, input);
       const reservationCode = await generateReservationCode(tx);
       const status = "status" in input ? input.status : "pending";
@@ -346,6 +376,7 @@ export const reservationService = {
           discount: totals.discount,
           total: totals.total,
           couponCode: totals.couponCode,
+          paymentMethodLabel,
           items: { create: totals.items },
         },
         include: { items: true, user: true },
@@ -369,6 +400,7 @@ export const reservationService = {
 
       await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, id);
       const user = await resolveUser(tx, input);
+      const paymentMethodLabel = await resolvePaymentMethod(tx, input, false);
       const totals = await calculateTotals(tx, input);
 
       await tx.reservationItem.deleteMany({ where: { reservationId: id } });
@@ -394,6 +426,7 @@ export const reservationService = {
           discount: totals.discount,
           total: totals.total,
           couponCode: totals.couponCode,
+          ...(input.paymentMethodId !== undefined ? { paymentMethodLabel } : {}),
           items: { create: totals.items },
         },
         include: { items: true, user: true },

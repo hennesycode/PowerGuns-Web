@@ -48,9 +48,11 @@ export const reservationScheduleSchema = z.object({
   scheduleNotes: z.string().max(500, "Máximo 500 caracteres").optional(),
 });
 
-export const reservationSchema = reservationCustomerSchema.merge(
-  reservationScheduleSchema,
-);
+export const reservationPaymentSchema = z.object({
+  paymentMethodId: z.string().trim().optional().nullable(),
+});
+
+export const reservationSchema = reservationCustomerSchema.merge(reservationScheduleSchema).merge(reservationPaymentSchema);
 
 export const reservationItemSchema = z.object({
   serviceId: z.coerce.number().int().positive("Servicio inválido"),

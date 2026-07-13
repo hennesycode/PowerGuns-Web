@@ -33,6 +33,7 @@ type Reservation = {
   discount: number;
   total: number;
   couponCode: string | null;
+  paymentMethodLabel: string | null;
   createdAt: string;
   services: Array<{
     id: string;
@@ -726,6 +727,7 @@ function ReservationDetailModal({ reservation, onClose }: { reservation: Reserva
           <InfoBox title="Cliente" lines={[`${reservation.firstName} ${reservation.lastName}`, reservation.identificationNumber, reservation.email, reservation.phone]} />
           <InfoBox title="Fecha y estado" lines={[reservation.reservationDate, reservation.reservationTimeLabel, statusLabels[reservation.status]]} />
           <InfoBox title="Ubicación" lines={[reservation.address, `${reservation.city}, ${reservation.department}`, reservation.country]} />
+          <InfoBox title="Método de pago" lines={[reservation.paymentMethodLabel || "No registrado"]} />
           <InfoBox title="Notas" lines={[reservation.notes || "Sin notas"]} />
         </div>
         <div className="mt-5 border border-[#c4871a]/10 bg-[#080706] p-4">

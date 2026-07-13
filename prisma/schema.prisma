@@ -35,9 +35,11 @@ enum GalleryMediaType {
 
 enum PaymentMethodType {
   bank_transfer
+  cash
 }
 
 enum PaymentProvider {
+  cash
   daviplata
   nequi
   bancolombia
@@ -293,6 +295,7 @@ model Reservation {
   discount             Int               @default(0)
   total                Int
   couponCode           String?
+  paymentMethodLabel   String?
 
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt

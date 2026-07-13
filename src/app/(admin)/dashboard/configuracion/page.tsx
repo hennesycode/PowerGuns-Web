@@ -6,11 +6,13 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 
 type TabId = "horarios" | "metodos-pago" | "reservas" | "empresa" | "notificaciones" | "seguridad";
 type PaymentProvider = "daviplata" | "nequi" | "bancolombia" | "davivienda" | "bbva";
+type PaymentMethodProvider = PaymentProvider | "cash";
+type PaymentMethodType = "bank_transfer" | "cash";
 
 interface PaymentMethod {
   id: string;
-  type: "bank_transfer";
-  provider: PaymentProvider;
+  type: PaymentMethodType;
+  provider: PaymentMethodProvider;
   providerLabel: string;
   accountNumber: string;
   accountHolderName: string;
@@ -253,9 +255,10 @@ export default function ConfiguracionPage() {
   };
 
   const editPaymentMethod = (method: PaymentMethod) => {
+    if (method.type === "cash") return;
     setEditingPaymentId(method.id);
     setPaymentForm({
-      provider: method.provider,
+      provider: method.provider as PaymentProvider,
       accountNumber: method.accountNumber,
       accountHolderName: method.accountHolderName,
       identificationNumber: method.identificationNumber ?? "",
@@ -283,6 +286,7 @@ export default function ConfiguracionPage() {
   };
 
   const deletePaymentMethod = async (method: PaymentMethod) => {
+    if (method.type === "cash") { toast.error("El pago en efectivo no se puede eliminar"); return; }
     if (!confirm(`¿Eliminar el método de pago ${method.providerLabel}?`)) return;
     try {
       const res = await fetch(`/api/dashboard/settings/payment-methods/${method.id}`, { method: "DELETE" });
@@ -292,6 +296,20 @@ export default function ConfiguracionPage() {
       if (editingPaymentId === method.id) resetPaymentForm();
       loadPaymentMethods();
     } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo eliminar el método de pago"); }
+  };
+
+  const togglePaymentMethod = async (method: PaymentMethod, isActive: boolean) => {
+    try {
+      const res = await fetch(`/api/dashboard/settings/payment-methods/${method.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo actualizar el método de pago");
+      toast.success(`${method.providerLabel} ${isActive ? "activado" : "desactivado"}`);
+      loadPaymentMethods();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo actualizar el método de pago"); }
   };
 
   return (
@@ -382,6 +400,7 @@ export default function ConfiguracionPage() {
             onCancelEdit={resetPaymentForm}
             onEdit={editPaymentMethod}
             onDelete={deletePaymentMethod}
+            onToggleActive={togglePaymentMethod}
           />
         )}
 
@@ -415,6 +434,7 @@ function PaymentMethodsSection({
   onCancelEdit,
   onEdit,
   onDelete,
+  onToggleActive,
 }: {
   methods: PaymentMethod[];
   loading: boolean;
@@ -426,6 +446,7 @@ function PaymentMethodsSection({
   onCancelEdit: () => void;
   onEdit: (method: PaymentMethod) => void;
   onDelete: (method: PaymentMethod) => void;
+  onToggleActive: (method: PaymentMethod, isActive: boolean) => void;
 }) {
   const inputClass = "w-full border border-[#3C3A37] bg-[#080706] px-3 py-3 text-sm text-white placeholder-[#5B5A59] outline-none transition-colors focus:border-[#c4871a]/60";
 
@@ -437,7 +458,7 @@ function PaymentMethodsSection({
             {editingId ? "Editar método" : "Agregar método"}
           </p>
           <p className="mt-1 text-xs text-[#5B5A59]">
-            Por ahora solo se permite transferencia bancaria.
+            Agrega métodos de transferencia. El pago en efectivo se administra desde la lista.
           </p>
         </div>
 
@@ -492,7 +513,7 @@ function PaymentMethodsSection({
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-heading text-sm font-bold uppercase tracking-[.12em] text-white">Métodos configurados</p>
-            <p className="mt-1 text-xs text-[#5B5A59]">Administra Daviplata, Nequi, Bancolombia, Davivienda y BBVA.</p>
+            <p className="mt-1 text-xs text-[#5B5A59]">Administra pago en efectivo y transferencias activas para reservas.</p>
           </div>
           <span className="w-fit border border-[#c4871a]/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#c4871a]">{methods.length} registrados</span>
         </div>
@@ -514,16 +535,22 @@ function PaymentMethodsSection({
                       <h3 className="font-heading text-base font-bold uppercase tracking-[.04em] text-white">{method.providerLabel}</h3>
                       <span className={`border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.1em] ${method.isActive ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-[#3C3A37] bg-[#0F0D0B] text-[#5B5A59]"}`}>{method.isActive ? "Activo" : "Inactivo"}</span>
                     </div>
-                    <p className="mt-1 text-xs text-[#5B5A59]">Transferencia bancaria</p>
-                    <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                      <div><dt className="text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">Cuenta</dt><dd className="font-semibold text-[#B2AAA7]">{method.accountNumber}</dd></div>
-                      <div><dt className="text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">Titular</dt><dd className="font-semibold text-[#B2AAA7]">{method.accountHolderName}</dd></div>
-                      <div><dt className="text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">Identificación</dt><dd className="font-semibold text-[#B2AAA7]">{method.identificationNumber || "No registrada"}</dd></div>
-                    </dl>
+                    <p className="mt-1 text-xs text-[#5B5A59]">{method.type === "cash" ? "Pago presencial" : "Transferencia bancaria"}</p>
+                    {method.type === "bank_transfer" && (
+                      <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                        <div><dt className="text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">Cuenta</dt><dd className="font-semibold text-[#B2AAA7]">{method.accountNumber}</dd></div>
+                        <div><dt className="text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">Titular</dt><dd className="font-semibold text-[#B2AAA7]">{method.accountHolderName}</dd></div>
+                        <div><dt className="text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">Identificación</dt><dd className="font-semibold text-[#B2AAA7]">{method.identificationNumber || "No registrada"}</dd></div>
+                      </dl>
+                    )}
                   </div>
-                  <div className="flex shrink-0 gap-2">
-                    <button type="button" onClick={() => onEdit(method)} className="border border-[#3C3A37] px-3 py-2 text-[10px] font-bold uppercase tracking-[.08em] text-[#B2AAA7] transition-colors hover:border-[#c4871a]/50 hover:text-white">Editar</button>
-                    <button type="button" onClick={() => onDelete(method)} className="border border-[#B63A2B]/40 px-3 py-2 text-[10px] font-bold uppercase tracking-[.08em] text-[#ff6b5f] transition-colors hover:bg-[#B63A2B]/10">Eliminar</button>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-2 border border-[#3C3A37] px-3 py-2 text-[10px] font-bold uppercase tracking-[.08em] text-[#B2AAA7]">
+                      <input type="checkbox" checked={method.isActive} onChange={(event) => onToggleActive(method, event.target.checked)} className="h-4 w-4 accent-[#c4871a]" />
+                      Activo
+                    </label>
+                    {method.type === "bank_transfer" && <button type="button" onClick={() => onEdit(method)} className="border border-[#3C3A37] px-3 py-2 text-[10px] font-bold uppercase tracking-[.08em] text-[#B2AAA7] transition-colors hover:border-[#c4871a]/50 hover:text-white">Editar</button>}
+                    {method.type === "bank_transfer" && <button type="button" onClick={() => onDelete(method)} className="border border-[#B63A2B]/40 px-3 py-2 text-[10px] font-bold uppercase tracking-[.08em] text-[#ff6b5f] transition-colors hover:bg-[#B63A2B]/10">Eliminar</button>}
                   </div>
                 </div>
               </article>

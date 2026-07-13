@@ -28,6 +28,8 @@ export const CONTACT = {
   phone: "3057138140",
 };
 
+export const POLYGON_ADDRESS = "Barrio Barzal Alto, Cl. 34 #41 - 32, Villavicencio, Meta";
+
 export const STATS = [
   { value: "4", suffix: "+", label: "Estaciones de Tiro" },
   { value: "15", suffix: "m", label: "Distancia Máxima" },

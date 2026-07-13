@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { useCartContext } from "@/context/CartContext";
 import { colombiaDepartments, getCities } from "@/data/colombia-locations";
+import { POLYGON_ADDRESS } from "@/lib/constants";
 import type { BusinessHourData } from "@/lib/timezone";
 import {
   reservationCustomerSchema,
@@ -25,6 +26,12 @@ type AvailabilitySlot = {
   label: string;
   available: boolean;
   reason: "past" | "reserved" | "closed" | null;
+};
+type PaymentMethodOption = {
+  id: string;
+  type: string;
+  provider: string;
+  providerLabel: string;
 };
 
 const DRAFT_KEY = "powerguns_reservation_draft";
@@ -58,6 +65,7 @@ const emptyForm: ReservationFormData = {
   reservationDate: "",
   reservationTime: "",
   scheduleNotes: "",
+  paymentMethodId: null,
 };
 
 function formatCOP(value: number): string {
@@ -116,6 +124,8 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [businessHours, setBusinessHours] = useState<BusinessHourData[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -124,6 +134,8 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   const cities = form.department ? getCities(form.department) : [];
   const progress = ((step - 1) / (steps.length - 1)) * 100;
   const selectedDate = form.reservationDate ? parseDateKey(form.reservationDate) : null;
+  const cashPaymentMethods = paymentMethods.filter((method) => method.type === "cash");
+  const transferPaymentMethods = paymentMethods.filter((method) => method.type === "bank_transfer");
 
   useEffect(() => {
     try {
@@ -170,6 +182,29 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
       })
       .catch(() => {
         if (!cancelled) toast.error("No se pudieron cargar los horarios de atención");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public/payment-methods")
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error al consultar métodos de pago");
+        return data.methods as PaymentMethodOption[];
+      })
+      .then((methods) => {
+        if (!cancelled) setPaymentMethods(methods);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("No se pudieron cargar los métodos de pago");
+      })
+      .finally(() => {
+        if (!cancelled) setPaymentMethodsLoading(false);
       });
 
     return () => {
@@ -300,6 +335,11 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     }
     if (items.length === 0) {
       toast.error("Debes seleccionar al menos un servicio");
+      return;
+    }
+    if (paymentMethods.length > 0 && !form.paymentMethodId) {
+      setErrors({ paymentMethodId: "Selecciona un método de pago" });
+      toast.error("Selecciona un método de pago");
       return;
     }
 
@@ -654,8 +694,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
 
             <div className="border border-[#c4871a]/12 bg-[#080706] p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#5B5A59]">Ubicación</p>
-              <p className="mt-1 text-sm text-white">{form.address || "No especificada"}</p>
-              <p className="text-xs text-[#B2AAA7]">{[form.city, form.department, "Colombia"].filter(Boolean).join(", ")}</p>
+              <p className="mt-1 text-sm text-white">Dirección: {POLYGON_ADDRESS}</p>
             </div>
 
             {form.scheduleNotes && (
@@ -690,9 +729,60 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
               </div>
             </div>
 
-            <div className="border border-dashed border-[#c4871a]/30 bg-[#c4871a]/5 p-5 text-center">
-              <p className="font-heading text-sm font-bold uppercase tracking-[.08em] text-[#c4871a]">Métodos de pago próximamente disponibles.</p>
-              <p className="mt-1 text-xs text-[#B2AAA7]">En el siguiente paso se habilitarán las opciones de pago.</p>
+            <div className="border border-[#c4871a]/12 bg-[#080706] p-4">
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-[#5B5A59]">Método de pago</p>
+                  <p className="mt-1 text-sm text-[#B2AAA7]">Selecciona cómo vas a pagar la reserva.</p>
+                </div>
+                {paymentMethods.length > 0 && <span className="w-fit text-[10px] font-semibold uppercase tracking-[.1em] text-[#c4871a]">Requerido</span>}
+              </div>
+
+              {paymentMethodsLoading ? (
+                <div className="flex justify-center py-7"><span className="h-6 w-6 animate-spin rounded-full border-2 border-[#c4871a] border-t-transparent" /></div>
+              ) : paymentMethods.length === 0 ? (
+                <div className="border border-dashed border-[#3C3A37] px-4 py-5 text-center text-sm text-[#5B5A59]">
+                  Métodos de pago no disponibles.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {cashPaymentMethods.length > 0 && (
+                    <div className="space-y-2">
+                      {cashPaymentMethods.map((method) => {
+                        const selected = form.paymentMethodId === method.id;
+                        return (
+                          <button key={method.id} type="button" onClick={() => setField("paymentMethodId", method.id)} className={`w-full border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-[#c4871a]/30 ${selected ? "border-[#c4871a] bg-[#c4871a]/10" : "border-[#3C3A37] hover:border-[#c4871a]/40"}`}>
+                            <span className="flex items-center justify-between gap-3">
+                              <span className="font-heading text-sm font-bold uppercase tracking-[.06em] text-white">{method.providerLabel}</span>
+                              <span className={`h-3 w-3 rounded-full border ${selected ? "border-[#c4871a] bg-[#c4871a]" : "border-[#5B5A59]"}`} />
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {transferPaymentMethods.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[.12em] text-[#5B5A59]">Transferencia bancaria</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {transferPaymentMethods.map((method) => {
+                          const selected = form.paymentMethodId === method.id;
+                          return (
+                            <button key={method.id} type="button" onClick={() => setField("paymentMethodId", method.id)} className={`border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-[#c4871a]/30 ${selected ? "border-[#c4871a] bg-[#c4871a]/10" : "border-[#3C3A37] hover:border-[#c4871a]/40"}`}>
+                              <span className="flex items-center justify-between gap-3">
+                                <span className="font-heading text-sm font-bold uppercase tracking-[.06em] text-white">{method.providerLabel}</span>
+                                <span className={`h-3 w-3 rounded-full border ${selected ? "border-[#c4871a] bg-[#c4871a]" : "border-[#5B5A59]"}`} />
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {fieldError("paymentMethodId")}
             </div>
           </div>
         )}

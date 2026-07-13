@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SiteShell } from "@/components/shared/SiteShell";
+import { POLYGON_ADDRESS } from "@/lib/constants";
 
-const ADDRESS = "Barrio Barzal Alto, Cl. 34 #41 - 32, Villavicencio, Meta";
 const MAPS_LINK = "https://maps.app.goo.gl/bxJjqN7H8GukNkzy7";
 
-const mapEmbedUrl = `https://maps.google.com/maps?width=100%25&height=100%25&hl=es&q=${encodeURIComponent(ADDRESS)}&t=k&z=18&ie=UTF8&iwloc=B&output=embed`;
+const mapEmbedUrl = `https://maps.google.com/maps?width=100%25&height=100%25&hl=es&q=${encodeURIComponent(POLYGON_ADDRESS)}&t=k&z=18&ie=UTF8&iwloc=B&output=embed`;
 
 export function LocationSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -121,7 +121,7 @@ export function LocationSection() {
                 </svg>
               </span>
               <p className="text-sm md:text-base text-[#B2AAA7] leading-relaxed">
-                {ADDRESS}
+                {POLYGON_ADDRESS}
               </p>
             </div>
 
