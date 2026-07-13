@@ -4,7 +4,27 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 
-type TabId = "horarios" | "reservas" | "empresa" | "notificaciones" | "seguridad";
+type TabId = "horarios" | "metodos-pago" | "reservas" | "empresa" | "notificaciones" | "seguridad";
+type PaymentProvider = "daviplata" | "nequi" | "bancolombia" | "davivienda" | "bbva";
+
+interface PaymentMethod {
+  id: string;
+  type: "bank_transfer";
+  provider: PaymentProvider;
+  providerLabel: string;
+  accountNumber: string;
+  accountHolderName: string;
+  identificationNumber: string | null;
+  isActive: boolean;
+}
+
+interface PaymentFormState {
+  provider: PaymentProvider;
+  accountNumber: string;
+  accountHolderName: string;
+  identificationNumber: string;
+  isActive: boolean;
+}
 
 interface SlotInput {
   openTime: string;
@@ -31,11 +51,28 @@ const DAYS = [
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: "horarios", label: "Horarios" },
+  { id: "metodos-pago", label: "Métodos de pago" },
   { id: "reservas", label: "Reservas" },
   { id: "empresa", label: "Empresa" },
   { id: "notificaciones", label: "Notificaciones" },
   { id: "seguridad", label: "Seguridad" },
 ];
+
+const PAYMENT_PROVIDERS: Array<{ value: PaymentProvider; label: string }> = [
+  { value: "daviplata", label: "Daviplata" },
+  { value: "nequi", label: "Nequi" },
+  { value: "bancolombia", label: "Bancolombia" },
+  { value: "davivienda", label: "Davivienda" },
+  { value: "bbva", label: "BBVA" },
+];
+
+const emptyPaymentForm: PaymentFormState = {
+  provider: "daviplata",
+  accountNumber: "",
+  accountHolderName: "",
+  identificationNumber: "",
+  isActive: true,
+};
 
 function defaultDays(): DayInput[] {
   return DAYS.map((day) => ({
@@ -54,6 +91,22 @@ export default function ConfiguracionPage() {
   const [days, setDays] = useState<DayInput[]>(defaultDays);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(true);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentForm, setPaymentForm] = useState<PaymentFormState>(emptyPaymentForm);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+
+  const loadPaymentMethods = useCallback(async () => {
+    setPaymentsLoading(true);
+    try {
+      const res = await fetch("/api/dashboard/settings/payment-methods");
+      if (!res.ok) throw new Error("No se pudieron cargar los métodos de pago");
+      const data = await res.json();
+      setPaymentMethods(data.methods ?? []);
+    } catch { toast.error("No se pudieron cargar los métodos de pago"); }
+    finally { setPaymentsLoading(false); }
+  }, []);
 
   useEffect(() => {
     fetch("/api/dashboard/settings/business-hours")
@@ -96,6 +149,19 @@ export default function ConfiguracionPage() {
       })
       .catch(() => toast.error("No se pudieron cargar los horarios"))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/dashboard/settings/payment-methods")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("No se pudieron cargar los métodos de pago");
+        const data = await res.json();
+        if (active) setPaymentMethods(data.methods ?? []);
+      })
+      .catch(() => toast.error("No se pudieron cargar los métodos de pago"))
+      .finally(() => { if (active) setPaymentsLoading(false); });
+    return () => { active = false; };
   }, []);
 
   const updateDay = (dayOfWeek: number, updates: Partial<DayInput>) => {
@@ -181,14 +247,58 @@ export default function ConfiguracionPage() {
     }
   }, [days]);
 
+  const resetPaymentForm = () => {
+    setPaymentForm(emptyPaymentForm);
+    setEditingPaymentId(null);
+  };
+
+  const editPaymentMethod = (method: PaymentMethod) => {
+    setEditingPaymentId(method.id);
+    setPaymentForm({
+      provider: method.provider,
+      accountNumber: method.accountNumber,
+      accountHolderName: method.accountHolderName,
+      identificationNumber: method.identificationNumber ?? "",
+      isActive: method.isActive,
+    });
+  };
+
+  const savePaymentMethod = async () => {
+    if (!paymentForm.accountNumber.trim()) { toast.error("Ingresa el número de cuenta"); return; }
+    if (!paymentForm.accountHolderName.trim()) { toast.error("Ingresa el nombre completo"); return; }
+    setPaymentSaving(true);
+    try {
+      const res = await fetch(editingPaymentId ? `/api/dashboard/settings/payment-methods/${editingPaymentId}` : "/api/dashboard/settings/payment-methods", {
+        method: editingPaymentId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "bank_transfer", ...paymentForm, identificationNumber: paymentForm.identificationNumber || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo guardar el método de pago");
+      toast.success(editingPaymentId ? "Método de pago actualizado" : "Método de pago agregado");
+      resetPaymentForm();
+      loadPaymentMethods();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo guardar el método de pago"); }
+    finally { setPaymentSaving(false); }
+  };
+
+  const deletePaymentMethod = async (method: PaymentMethod) => {
+    if (!confirm(`¿Eliminar el método de pago ${method.providerLabel}?`)) return;
+    try {
+      const res = await fetch(`/api/dashboard/settings/payment-methods/${method.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo eliminar el método de pago");
+      toast.success("Método de pago eliminado");
+      if (editingPaymentId === method.id) resetPaymentForm();
+      loadPaymentMethods();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo eliminar el método de pago"); }
+  };
+
   return (
     <AdminLayout title="Configuración">
       <div className="space-y-6">
         <div>
-          <h1 className="font-heading text-2xl font-bold uppercase tracking-[.04em] text-white">
-            Configuración
-          </h1>
-          <p className="mt-1 text-sm text-[#B2AAA7]">
+          <p className="text-sm text-[#B2AAA7]">
             Administra los parámetros operativos del polígono.
           </p>
         </div>
@@ -260,7 +370,22 @@ export default function ConfiguracionPage() {
           </div>
         )}
 
-        {activeTab !== "horarios" && (
+        {activeTab === "metodos-pago" && (
+          <PaymentMethodsSection
+            methods={paymentMethods}
+            loading={paymentsLoading}
+            saving={paymentSaving}
+            form={paymentForm}
+            editingId={editingPaymentId}
+            onFormChange={setPaymentForm}
+            onSave={savePaymentMethod}
+            onCancelEdit={resetPaymentForm}
+            onEdit={editPaymentMethod}
+            onDelete={deletePaymentMethod}
+          />
+        )}
+
+        {activeTab !== "horarios" && activeTab !== "metodos-pago" && (
           <div className="flex flex-col items-center justify-center border border-dashed border-[#c4871a]/20 bg-[#0F0D0B] py-20 text-center">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mb-4 h-12 w-12 text-[#3C3A37]">
               <circle cx="12" cy="12" r="3" />
@@ -276,6 +401,137 @@ export default function ConfiguracionPage() {
         )}
       </div>
     </AdminLayout>
+  );
+}
+
+function PaymentMethodsSection({
+  methods,
+  loading,
+  saving,
+  form,
+  editingId,
+  onFormChange,
+  onSave,
+  onCancelEdit,
+  onEdit,
+  onDelete,
+}: {
+  methods: PaymentMethod[];
+  loading: boolean;
+  saving: boolean;
+  form: PaymentFormState;
+  editingId: string | null;
+  onFormChange: (form: PaymentFormState) => void;
+  onSave: () => void;
+  onCancelEdit: () => void;
+  onEdit: (method: PaymentMethod) => void;
+  onDelete: (method: PaymentMethod) => void;
+}) {
+  const inputClass = "w-full border border-[#3C3A37] bg-[#080706] px-3 py-3 text-sm text-white placeholder-[#5B5A59] outline-none transition-colors focus:border-[#c4871a]/60";
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
+      <section className="border border-[#c4871a]/10 bg-[#0F0D0B] p-5">
+        <div className="mb-5">
+          <p className="font-heading text-sm font-bold uppercase tracking-[.12em] text-white">
+            {editingId ? "Editar método" : "Agregar método"}
+          </p>
+          <p className="mt-1 text-xs text-[#5B5A59]">
+            Por ahora solo se permite transferencia bancaria.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#B2AAA7]">Tipo</span>
+            <select value="bank_transfer" disabled className={`${inputClass} cursor-not-allowed opacity-70`}>
+              <option value="bank_transfer">Transferencia bancaria</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#B2AAA7]">Entidad *</span>
+            <select value={form.provider} onChange={(event) => onFormChange({ ...form, provider: event.target.value as PaymentProvider })} className={inputClass}>
+              {PAYMENT_PROVIDERS.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#B2AAA7]">Número de cuenta *</span>
+            <input value={form.accountNumber} onChange={(event) => onFormChange({ ...form, accountNumber: event.target.value })} className={inputClass} placeholder="Número de cuenta o celular" />
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#B2AAA7]">Nombre completo *</span>
+            <input value={form.accountHolderName} onChange={(event) => onFormChange({ ...form, accountHolderName: event.target.value })} className={inputClass} placeholder="Titular de la cuenta" />
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#B2AAA7]">Número de identificación</span>
+            <input value={form.identificationNumber} onChange={(event) => onFormChange({ ...form, identificationNumber: event.target.value })} className={inputClass} placeholder="Opcional" />
+          </label>
+
+          <label className="flex items-center justify-between border border-[#3C3A37]/70 bg-[#080706] px-3 py-3">
+            <span>
+              <span className="block text-xs font-semibold uppercase tracking-[.1em] text-[#B2AAA7]">Estado</span>
+              <span className="text-xs text-[#5B5A59]">Visible para uso operativo</span>
+            </span>
+            <input type="checkbox" checked={form.isActive} onChange={(event) => onFormChange({ ...form, isActive: event.target.checked })} className="h-4 w-4 accent-[#c4871a]" />
+          </label>
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          {editingId && <button type="button" onClick={onCancelEdit} className="border border-[#3C3A37] px-5 py-3 text-xs font-bold uppercase tracking-[.08em] text-[#B2AAA7] transition-colors hover:text-white">Cancelar edición</button>}
+          <button type="button" onClick={onSave} disabled={saving} className="bg-[#c4871a] px-6 py-3 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#080706] transition-colors hover:bg-[#d6a244] disabled:opacity-60">
+            {saving ? "Guardando..." : editingId ? "Guardar cambios" : "+ Agregar método"}
+          </button>
+        </div>
+      </section>
+
+      <section className="border border-[#c4871a]/10 bg-[#0F0D0B] p-5">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-heading text-sm font-bold uppercase tracking-[.12em] text-white">Métodos configurados</p>
+            <p className="mt-1 text-xs text-[#5B5A59]">Administra Daviplata, Nequi, Bancolombia, Davivienda y BBVA.</p>
+          </div>
+          <span className="w-fit border border-[#c4871a]/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#c4871a]">{methods.length} registrados</span>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-16"><span className="h-7 w-7 animate-spin rounded-full border-2 border-[#c4871a] border-t-transparent" /></div>
+        ) : methods.length === 0 ? (
+          <div className="border border-dashed border-[#c4871a]/20 bg-[#080706] py-14 text-center">
+            <p className="font-heading text-sm font-bold uppercase tracking-[.08em] text-[#5B5A59]">Sin métodos de pago</p>
+            <p className="mt-1 text-xs text-[#3C3A37]">Agrega el primer método desde el formulario.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {methods.map((method) => (
+              <article key={method.id} className="border border-[#3C3A37]/60 bg-[#080706] p-4 transition-colors hover:border-[#c4871a]/30">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-heading text-base font-bold uppercase tracking-[.04em] text-white">{method.providerLabel}</h3>
+                      <span className={`border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.1em] ${method.isActive ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-[#3C3A37] bg-[#0F0D0B] text-[#5B5A59]"}`}>{method.isActive ? "Activo" : "Inactivo"}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-[#5B5A59]">Transferencia bancaria</p>
+                    <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                      <div><dt className="text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">Cuenta</dt><dd className="font-semibold text-[#B2AAA7]">{method.accountNumber}</dd></div>
+                      <div><dt className="text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">Titular</dt><dd className="font-semibold text-[#B2AAA7]">{method.accountHolderName}</dd></div>
+                      <div><dt className="text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">Identificación</dt><dd className="font-semibold text-[#B2AAA7]">{method.identificationNumber || "No registrada"}</dd></div>
+                    </dl>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button type="button" onClick={() => onEdit(method)} className="border border-[#3C3A37] px-3 py-2 text-[10px] font-bold uppercase tracking-[.08em] text-[#B2AAA7] transition-colors hover:border-[#c4871a]/50 hover:text-white">Editar</button>
+                    <button type="button" onClick={() => onDelete(method)} className="border border-[#B63A2B]/40 px-3 py-2 text-[10px] font-bold uppercase tracking-[.08em] text-[#ff6b5f] transition-colors hover:bg-[#B63A2B]/10">Eliminar</button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 

@@ -33,6 +33,18 @@ enum GalleryMediaType {
   video
 }
 
+enum PaymentMethodType {
+  bank_transfer
+}
+
+enum PaymentProvider {
+  daviplata
+  nequi
+  bancolombia
+  davivienda
+  bbva
+}
+
 model User {
   id                   Int                @id @default(autoincrement())
   username             String             @unique
@@ -150,6 +162,21 @@ model GalleryItem {
 
   @@index([mediaType])
   @@index([sortOrder])
+}
+
+model PaymentMethod {
+  id                   String            @id @default(cuid())
+  type                 PaymentMethodType @default(bank_transfer)
+  provider             PaymentProvider
+  accountNumber        String
+  accountHolderName    String
+  identificationNumber String?
+  isActive             Boolean           @default(true)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@index([provider])
+  @@index([isActive])
 }
 
 enum DiscountType {
