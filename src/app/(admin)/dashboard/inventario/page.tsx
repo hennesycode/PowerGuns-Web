@@ -5,7 +5,7 @@ import Image from "next/image";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { toast } from "sonner";
 
-type Category = { id: string; name: string; slug: string; description: string | null; isActive: boolean; sortOrder: number; parentId: string | null; productCount: number; children: { id: string; name: string; productCount: number; parentId: string | null }[] };
+type Category = { id: string; name: string; slug: string; description: string | null; isActive: boolean; sortOrder: number; parentId: string | null; productCount: number; children: Category[] };
 type FlatCategory = { id: string; name: string; parentId: string | null };
 type Product = { id: string; name: string; slug: string; sku: string | null; description: string | null; quantity: number; minStock: number; location: string | null; isActive: boolean; imageUrl: string | null; categoryId: string; categoryName: string; updatedAt: string };
 type HistoryEntry = { id: string; action: string; field: string | null; oldValue: string | null; newValue: string | null; note: string | null; changedByName: string | null; createdAt: string };
@@ -88,7 +88,7 @@ export default function InventarioPage() {
 
         <div className="grid lg:grid-cols-[220px_1fr] gap-6">
           <div className="hidden lg:block">
-            <CategorySidebar categories={categories} selectedId={selectedCategoryId} onSelect={handleCategoryFilter} onManage={() => setCategoriesListOpen(true)} />
+            <CategorySidebar categories={categories} selectedId={selectedCategoryId} onSelect={handleCategoryFilter} onManage={() => setCategoriesListOpen(true)} onEdit={(category) => { setEditingCategory(category); setCategoryFormOpen(true); }} onDelete={setDeletingCategory} />
           </div>
 
           <div className="space-y-4">
@@ -128,7 +128,7 @@ export default function InventarioPage() {
   );
 }
 
-function CategorySidebar({ categories, selectedId, onSelect, onManage }: { categories: Category[]; selectedId: string; onSelect: (id: string) => void; onManage: () => void }) {
+function CategorySidebar({ categories, selectedId, onSelect, onManage, onEdit, onDelete }: { categories: Category[]; selectedId: string; onSelect: (id: string) => void; onManage: () => void; onEdit: (category: Category) => void; onDelete: (category: Category) => void }) {
   return (
     <div className="border border-[#c4871a]/10 bg-[#0F0D0B] p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -139,13 +139,32 @@ function CategorySidebar({ categories, selectedId, onSelect, onManage }: { categ
         <button type="button" onClick={() => onSelect("")} className={`block w-full px-3 py-2 text-left text-sm transition-colors ${!selectedId ? "border-l-2 border-[#c4871a] bg-[#c4871a]/10 text-[#c4871a]" : "text-[#B2AAA7] hover:text-white hover:bg-[#c4871a]/5"}`}>Todas</button>
         {categories.map((cat) => (
           <div key={cat.id}>
-            <button type="button" onClick={() => onSelect(cat.id)} className={`block w-full px-3 py-2 text-left text-sm transition-colors ${selectedId === cat.id ? "border-l-2 border-[#c4871a] bg-[#c4871a]/10 text-[#c4871a]" : "text-[#B2AAA7] hover:text-white hover:bg-[#c4871a]/5"}`}>{cat.name} ({cat.productCount})</button>
+            <div className={`flex items-center gap-1 ${selectedId === cat.id ? "border-l-2 border-[#c4871a] bg-[#c4871a]/10" : "hover:bg-[#c4871a]/5"}`}>
+              <button type="button" onClick={() => onSelect(cat.id)} className={`min-w-0 flex-1 px-3 py-2 text-left text-sm transition-colors ${selectedId === cat.id ? "text-[#c4871a]" : "text-[#B2AAA7] hover:text-white"}`}>{cat.name} ({cat.productCount})</button>
+              <CategoryInlineActions category={cat} onEdit={onEdit} onDelete={onDelete} />
+            </div>
             {cat.children.map((child) => (
-              <button key={child.id} type="button" onClick={() => onSelect(child.id)} className={`block w-full py-1.5 pl-6 pr-3 text-left text-sm transition-colors ${selectedId === child.id ? "border-l-2 border-[#c4871a] bg-[#c4871a]/10 text-[#c4871a]" : "text-[#5B5A59] hover:text-[#B2AAA7]"}`}>└ {child.name} ({child.productCount})</button>
+              <div key={child.id} className={`flex items-center gap-1 ${selectedId === child.id ? "border-l-2 border-[#c4871a] bg-[#c4871a]/10" : "hover:bg-[#c4871a]/5"}`}>
+                <button type="button" onClick={() => onSelect(child.id)} className={`min-w-0 flex-1 py-1.5 pl-6 pr-2 text-left text-sm transition-colors ${selectedId === child.id ? "text-[#c4871a]" : "text-[#5B5A59] hover:text-[#B2AAA7]"}`}>└ {child.name} ({child.productCount})</button>
+                <CategoryInlineActions category={child} onEdit={onEdit} onDelete={onDelete} />
+              </div>
             ))}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function CategoryInlineActions({ category, onEdit, onDelete }: { category: Category; onEdit: (category: Category) => void; onDelete: (category: Category) => void }) {
+  return (
+    <div className="mr-1 flex shrink-0 gap-1">
+      <button type="button" onClick={(event) => { event.stopPropagation(); onEdit(category); }} title="Editar categoría" className="p-1 text-[#5B5A59] transition-colors hover:text-[#c4871a]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+      </button>
+      <button type="button" onClick={(event) => { event.stopPropagation(); onDelete(category); }} title="Eliminar categoría" className="p-1 text-[#5B5A59] transition-colors hover:text-[#B63A2B]">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+      </button>
     </div>
   );
 }
@@ -283,6 +302,10 @@ function CategoriesListModal({ categories, onClose, onEdit, onDelete, onNew }: {
                 <span className="truncate text-[#B2AAA7]">└ {child.name}</span>
                 <span className="shrink-0 rounded border border-[#c4871a]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[.1em] text-[#5B5A59]">Hija</span>
                 <span className="text-[11px] text-[#5B5A59]">{child.productCount} prod.</span>
+              </div>
+              <div className="flex gap-2 shrink-0 ml-3">
+                <button type="button" onClick={() => onEdit(child)} className="text-[#5B5A59] hover:text-[#c4871a] transition-colors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg></button>
+                <button type="button" onClick={() => onDelete(child)} className="text-[#5B5A59] hover:text-[#B63A2B] transition-colors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg></button>
               </div>
             </div>
           ))}

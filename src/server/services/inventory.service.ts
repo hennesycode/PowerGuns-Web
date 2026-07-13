@@ -11,7 +11,7 @@ function slugify(text: string) {
     .slice(0, 80);
 }
 
-function serializeCategory(c: Record<string, unknown> & { id: string; name: string; slug: string; description: string | null; isActive: boolean; sortOrder: number; parentId: string | null; createdAt: Date; _count?: { products: number }; children?: Array<{ id: string; name: string; parentId: string | null; _count?: { products: number } }> }) {
+function serializeCategory(c: Record<string, unknown> & { id: string; name: string; slug: string; description: string | null; isActive: boolean; sortOrder: number; parentId: string | null; createdAt: Date; _count?: { products: number }; children?: Array<{ id: string; name: string; slug: string; description: string | null; isActive: boolean; sortOrder: number; parentId: string | null; createdAt: Date; _count?: { products: number } }> }) {
   return {
     id: c.id,
     name: c.name,
@@ -22,8 +22,16 @@ function serializeCategory(c: Record<string, unknown> & { id: string; name: stri
     parentId: c.parentId ?? null,
     productCount: (c._count?.products ?? 0) + ((c.children as Array<{ _count?: { products: number } }> | undefined)?.reduce((sum, child) => sum + (child._count?.products ?? 0), 0) ?? 0),
     children: (c.children ?? []).map((child) => ({
-      id: child.id, name: child.name, parentId: child.parentId ?? null,
+      id: child.id,
+      name: child.name,
+      slug: child.slug,
+      description: child.description,
+      isActive: child.isActive,
+      sortOrder: child.sortOrder,
+      parentId: child.parentId ?? null,
       productCount: child._count?.products ?? 0,
+      children: [],
+      createdAt: child.createdAt.toISOString(),
     })),
     createdAt: c.createdAt.toISOString(),
   };
@@ -47,7 +55,7 @@ export const inventoryService = {
       orderBy: { sortOrder: "asc" },
       include: {
         _count: { select: { products: { where: { deletedAt: null } } } },
-        children: { include: { _count: { select: { products: { where: { deletedAt: null } } } } } },
+        children: { orderBy: { sortOrder: "asc" }, include: { _count: { select: { products: { where: { deletedAt: null } } } } } },
       },
     });
     return categories.map(serializeCategory);
