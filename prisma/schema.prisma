@@ -248,6 +248,8 @@ model BusinessHour {
   dayName   String
   isOpen    Boolean @default(false)
   slots     BusinessHourSlot[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([dayOfWeek])
 }

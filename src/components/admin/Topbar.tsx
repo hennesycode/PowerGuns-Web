@@ -26,12 +26,32 @@ interface TopbarProps {
   title?: string;
 }
 
+const COLOMBIA_CLOCK_TIME_ZONE = "America/Bogota";
+
+const clockDateFormatter = new Intl.DateTimeFormat("es-CO", {
+  timeZone: COLOMBIA_CLOCK_TIME_ZONE,
+  weekday: "short",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+const clockTimeFormatter = new Intl.DateTimeFormat("es-CO", {
+  timeZone: COLOMBIA_CLOCK_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+});
+
 export function Topbar({ onMenuToggle, title = "Dashboard" }: TopbarProps) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [colombiaNow, setColombiaNow] = useState<number | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const clockBaseRef = useRef<{ serverNow: number; receivedAt: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -61,6 +81,37 @@ export function Topbar({ onMenuToggle, title = "Dashboard" }: TopbarProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncClock = async () => {
+      try {
+        const res = await fetch("/api/dashboard/clock", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json() as { now?: number };
+        if (cancelled || typeof data.now !== "number") return;
+        clockBaseRef.current = { serverNow: data.now, receivedAt: performance.now() };
+        setColombiaNow(data.now);
+      } catch {
+        // Keep the last server-synced value if a refresh fails temporarily.
+      }
+    };
+
+    syncClock();
+    const tickId = window.setInterval(() => {
+      const base = clockBaseRef.current;
+      if (!base) return;
+      setColombiaNow(base.serverNow + (performance.now() - base.receivedAt));
+    }, 1000);
+    const syncId = window.setInterval(syncClock, 60000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(tickId);
+      window.clearInterval(syncId);
+    };
+  }, []);
+
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
@@ -73,6 +124,8 @@ export function Topbar({ onMenuToggle, title = "Dashboard" }: TopbarProps) {
 
   const fullName = user ? `${user.firstName} ${user.lastName}` : "";
   const initials = getInitials(fullName);
+  const clockDate = colombiaNow ? clockDateFormatter.format(new Date(colombiaNow)) : "Colombia";
+  const clockTime = colombiaNow ? clockTimeFormatter.format(new Date(colombiaNow)).replace(/\s/g, " ") : "--:--:--";
 
   return (
     <header className="sticky top-0 z-30 h-16 flex items-center justify-between px-4 md:px-6 bg-[#080706]/80 backdrop-blur-md border-b border-[#c4871a]/10">
@@ -96,6 +149,28 @@ export function Topbar({ onMenuToggle, title = "Dashboard" }: TopbarProps) {
 
       {/* Right: notifications + profile */}
       <div className="flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-2.5 border border-[#c4871a]/15 bg-[#171513]/60 px-3 py-1.5 shadow-[0_0_18px_rgba(196,135,26,.05)]" aria-label="Hora actual de Colombia">
+          <span className="flex h-8 w-8 items-center justify-center border border-[#c4871a]/25 bg-[#c4871a]/10 text-[#c4871a]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+              <circle cx="12" cy="12" r="8" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </span>
+          <div className="leading-none">
+            <div className="font-['Rajdhani',sans-serif] text-[10px] font-semibold uppercase tracking-[.16em] text-[#5B5A59]">
+              Hora Colombia
+            </div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="font-heading text-sm font-bold uppercase tracking-[.08em] text-white tabular-nums">
+                {clockTime}
+              </span>
+              <span className="font-['Rajdhani',sans-serif] text-[10px] font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">
+                {clockDate}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Notifications */}
         <button
           className="relative text-[#B2AAA7] hover:text-white transition-colors p-1"
