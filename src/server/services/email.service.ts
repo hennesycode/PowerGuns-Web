@@ -32,6 +32,14 @@ type ReservationEmailData = {
 
 type SendResult = { success: true } | { success: false; error: string };
 
+type ContactEmailData = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  message: string;
+};
+
 type MailAttachment = {
   filename: string;
   path: string;
@@ -196,6 +204,57 @@ function buildReservationEmail(reservation: ReservationEmailData, variant: "cust
   return { html, text };
 }
 
+function buildContactEmail(contact: ContactEmailData) {
+  const fullName = `${contact.firstName} ${contact.lastName}`;
+  const logoUrl = `cid:${LOGO_CID}`;
+  const html = `
+    <!doctype html>
+    <html lang="es">
+      <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nuevo formulario de contacto</title></head>
+      <body style="margin:0;background:#080706;font-family:Arial,Helvetica,sans-serif;color:#f7f2eb;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#080706;padding:28px 12px;">
+          <tr><td align="center">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#0f0d0b;border:1px solid rgba(196,135,26,.22);">
+              <tr>
+                <td style="padding:26px;background:linear-gradient(135deg,#171513 0%,#0f0d0b 58%,#251909 100%);border-bottom:1px solid rgba(196,135,26,.18);">
+                  <table role="presentation" width="100%"><tr>
+                    <td><img src="${logoUrl}" width="72" height="72" alt="Power Guns" style="display:block;border-radius:50%;border:1px solid rgba(196,135,26,.45);"></td>
+                    <td align="right" style="font-size:12px;color:#c4871a;text-transform:uppercase;letter-spacing:.12em;font-weight:700;">Contacto web</td>
+                  </tr></table>
+                  <h1 style="margin:22px 0 8px;font-size:30px;line-height:1.05;text-transform:uppercase;letter-spacing:.04em;color:#fff;">Nuevo formulario de contacto</h1>
+                  <p style="margin:0;color:#b2aaa7;font-size:15px;line-height:1.6;">Un visitante envió una solicitud desde la página de contacto de ${SITE.name}.</p>
+                </td>
+              </tr>
+              <tr><td style="padding:24px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid rgba(196,135,26,.16);background:#080706;padding:14px 18px;margin-bottom:18px;">
+                  ${detailRow("Nombre completo", fullName)}
+                  ${detailRow("Correo", contact.email)}
+                  ${detailRow("Celular", `+57${contact.phone}`)}
+                </table>
+                <div style="border:1px solid rgba(196,135,26,.16);background:#171513;padding:18px;margin-bottom:18px;">
+                  <p style="margin:0 0 10px;color:#c4871a;font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;">Detalles de contacto</p>
+                  <p style="margin:0;color:#f7f2eb;font-size:14px;line-height:1.7;white-space:pre-line;">${escapeHtml(contact.message)}</p>
+                </div>
+                <p style="margin:0;color:#8f8782;font-size:12px;line-height:1.6;">Este mensaje fue generado automáticamente desde el formulario público de contacto.</p>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  const text = [
+    "Nuevo formulario de contacto",
+    `Nombre: ${fullName}`,
+    `Correo: ${contact.email}`,
+    `Celular: +57${contact.phone}`,
+    `Mensaje: ${contact.message}`,
+  ].join("\n");
+
+  return { html, text };
+}
+
 function getLogoAttachment(): MailAttachment {
   return {
     filename: "powerguns-logo.jpg",
@@ -248,6 +307,18 @@ export const emailService = {
     return sendMail({
       to: admins,
       subject: `Nueva reserva ${reservation.reservationCode} | ${reservation.firstName} ${reservation.lastName}`,
+      ...email,
+    });
+  },
+
+  async sendContactAdminNotification(contact: ContactEmailData, recipients: string[]): Promise<SendResult> {
+    const admins = recipients.map((email) => email.trim()).filter(Boolean);
+    if (admins.length === 0) return { success: false, error: "No hay administradores configurados" };
+
+    const email = buildContactEmail(contact);
+    return sendMail({
+      to: admins,
+      subject: `Nuevo formulario de contacto | ${contact.firstName} ${contact.lastName}`,
       ...email,
     });
   },

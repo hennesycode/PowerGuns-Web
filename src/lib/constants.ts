@@ -5,16 +5,16 @@ export const SITE = {
   url: "https://powergunspoligono.com",
   city: "Villavicencio, Meta",
   country: "Colombia",
-  phone: "+57 300 000 0000",
-  email: "info@powergunspoligono.com",
-  whatsapp: "573000000000",
+  phone: "305 713 8140",
+  email: "poligonopowerguns@gmail.com",
+  whatsapp: "573057138140",
 };
 
 export const NAV_LINKS = [
   { label: "Servicios", href: "/servicios" },
   { label: "Nosotros", href: "/nosotros" },
   { label: "Galería", href: "/galeria" },
-  { label: "Contacto", href: "#contacto" },
+  { label: "Contacto", href: "/contacto" },
 ];
 
 export const HOURS = {
@@ -23,12 +23,12 @@ export const HOURS = {
 };
 
 export const CONTACT = {
-  address: "Calle 34 #41-32 Barzal Alto",
+  address: "Calle 34 # 41 - 34 Barrio Barzal Alto - Villavicencio, Meta",
   email: "poligonopowerguns@gmail.com",
-  phone: "3057138140",
+  phone: "305 713 8140",
 };
 
-export const POLYGON_ADDRESS = "Barrio Barzal Alto, Cl. 34 #41 - 32, Villavicencio, Meta";
+export const POLYGON_ADDRESS = "Calle 34 # 41 - 34 Barrio Barzal Alto - Villavicencio, Meta";
 
 export const STATS = [
   { value: "4", suffix: "+", label: "Estaciones de Tiro" },

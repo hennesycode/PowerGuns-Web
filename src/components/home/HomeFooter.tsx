@@ -10,14 +10,14 @@ const INSTAGRAM_LINK = "https://www.instagram.com/powergunspoligono/";
 const FACEBOOK_LINK = "https://www.facebook.com/powergunspoligono/";
 const LINKEDIN_LINK = "https://www.linkedin.com/in/power-guns-poligono-8704b12a5";
 const YOUTUBE_LINK = "https://www.youtube.com/@powergunspoligono";
-const MAPS_LINK = "https://maps.app.goo.gl/bxJjqN7H8GukNkzy7";
+const MAPS_LINK = "https://maps.app.goo.gl/aoPPrqEmKNNyweXe8";
 const HENNESY_LINK = "https://hennesy.pro";
 
 const quickLinks = [
   { label: "Consulta Certificados DCCAE", href: "/certificados-dccae/login" },
   { label: "Acerca de Nosotros", href: "/#nosotros" },
   { label: "Galería", href: "/galeria" },
-  { label: "Contáctenos", href: "/#contacto" },
+  { label: "Contáctenos", href: "/contacto" },
   { label: "Mi Cuenta", href: "/login" },
   { label: "Política de Privacidad", href: "/politica-de-privacidad" },
 ];
@@ -171,7 +171,7 @@ export function HomeFooter() {
                       </svg>
                     </span>
                     <span>
-                      Calle 34 #41-32 Barzal Alto, Villavicencio, Meta
+                      Calle 34 # 41 - 34 Barrio Barzal Alto - Villavicencio, Meta
                     </span>
                   </a>
                 </li>
@@ -201,7 +201,7 @@ export function HomeFooter() {
                         <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6.5-6.5A19.79 19.79 0 011.61 3.4 2 2 0 013.6 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.91 8.6a16 16 0 006 6l.97-.97a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
                       </svg>
                     </span>
-                    <span>3057138140</span>
+                    <span>305 713 8140</span>
                   </a>
                 </li>
               </ul>

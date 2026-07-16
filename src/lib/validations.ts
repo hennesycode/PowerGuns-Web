@@ -21,13 +21,26 @@ export const bookingSchema = z.object({
 });
 
 export const contactSchema = z.object({
-  name: z.string().min(3, "Nombre requerido (mín. 3 caracteres)"),
+  firstName: z
+    .string()
+    .trim()
+    .min(2, "Nombres requeridos")
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, "Los nombres solo pueden contener letras"),
+  lastName: z
+    .string()
+    .trim()
+    .min(2, "Apellidos requeridos")
+    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, "Los apellidos solo pueden contener letras"),
   phone: z
     .string()
-    .min(7, "Teléfono requerido")
-    .regex(/^\+?\d{7,15}$/, "Formato de teléfono inválido"),
-  email: z.string().email("Correo inválido").or(z.literal("")),
-  message: z.string().min(10, "Mensaje muy corto").max(1000, "Mensaje demasiado largo"),
+    .trim()
+    .length(10, "El celular debe tener 10 dígitos")
+    .regex(/^3\d{9}$/, "El celular debe iniciar en 3 y tener 10 dígitos"),
+  email: z.string().trim().email("Correo inválido"),
+  message: z.string().trim().min(10, "Mensaje muy corto").max(1200, "Mensaje demasiado largo"),
+  acceptedPrivacy: z.literal(true, {
+    message: "Debes aceptar políticas de privacidad, términos y condiciones",
+  }),
 });
 
 export type BookingInput = z.infer<typeof bookingSchema>;

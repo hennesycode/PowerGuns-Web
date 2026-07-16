@@ -6,7 +6,7 @@ import Image from "next/image";
 import { SiteShell } from "@/components/shared/SiteShell";
 import { POLYGON_ADDRESS } from "@/lib/constants";
 
-const MAPS_LINK = "https://maps.app.goo.gl/bxJjqN7H8GukNkzy7";
+const MAPS_LINK = "https://maps.app.goo.gl/aoPPrqEmKNNyweXe8";
 
 const mapEmbedUrl = `https://maps.google.com/maps?width=100%25&height=100%25&hl=es&q=${encodeURIComponent(POLYGON_ADDRESS)}&t=k&z=18&ie=UTF8&iwloc=B&output=embed`;
 

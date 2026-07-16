@@ -35,7 +35,7 @@ export async function PackagesSection() {
         </div>
         <div className="mt-8 p-5 bg-[#c4871a]/6 border border-[#c4871a]/18 flex items-center gap-3.5">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-[#c4871a] flex-shrink-0"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-          <p className="text-[13px] text-[#B2AAA7]">¿Grupo de más de 5 personas o evento especial? <Link href="#contacto" className="text-[#c4871a] no-underline">Solicita una cotización personalizada →</Link></p>
+          <p className="text-[13px] text-[#B2AAA7]">¿Grupo de más de 5 personas o evento especial? <Link href="/contacto" className="text-[#c4871a] no-underline">Solicita una cotización personalizada →</Link></p>
         </div>
       </SiteShell>
     </section>
