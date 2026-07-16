@@ -361,7 +361,16 @@ export default function ReservasDashboardPage() {
         />
       )}
 
-      {viewing && <ReservationDetailModal reservation={viewing} onClose={() => setViewing(null)} />}
+      {viewing && (
+        <ReservationDetailModal
+          reservation={viewing}
+          onClose={() => setViewing(null)}
+          onUpdated={async (reservation) => {
+            setViewing(reservation);
+            await refreshReservations();
+          }}
+        />
+      )}
 
       {deleting && (
         <ConfirmDeleteModal
@@ -715,7 +724,47 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block"><span className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">{label}</span>{children}</label>;
 }
 
-function ReservationDetailModal({ reservation, onClose }: { reservation: Reservation; onClose: () => void }) {
+function ReservationDetailModal({ reservation, onClose, onUpdated }: {
+  reservation: Reservation;
+  onClose: () => void;
+  onUpdated: (reservation: Reservation) => void | Promise<void>;
+}) {
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  const changeStatus = async (nextStatus: ReservationStatus) => {
+    setUpdatingStatus(true);
+    try {
+      const res = await fetch(`/api/dashboard/reservations/${reservation.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo actualizar el estado");
+      toast.success("Estado actualizado correctamente");
+      await onUpdated(data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar el estado");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const resendEmail = async () => {
+    setSendingEmail(true);
+    try {
+      const res = await fetch(`/api/dashboard/reservations/${reservation.id}/email`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo reenviar el correo");
+      toast.success("Correo de confirmación reenviado");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo reenviar el correo");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="w-full max-w-3xl border border-[#c4871a]/15 bg-[#0F0D0B] p-6 shadow-2xl">
@@ -729,6 +778,27 @@ function ReservationDetailModal({ reservation, onClose }: { reservation: Reserva
           <InfoBox title="Ubicación" lines={[reservation.address, `${reservation.city}, ${reservation.department}`, reservation.country]} />
           <InfoBox title="Método de pago" lines={[reservation.paymentMethodLabel || "No registrado"]} />
           <InfoBox title="Notas" lines={[reservation.notes || "Sin notas"]} />
+        </div>
+        <div className="mt-5 grid gap-3 border border-[#c4871a]/10 bg-[#080706] p-4 md:grid-cols-[1fr_auto] md:items-end">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">Cambiar estado</span>
+            <select
+              value={reservation.status}
+              onChange={(event) => changeStatus(event.target.value as ReservationStatus)}
+              disabled={updatingStatus}
+              className="w-full border border-[#3C3A37] bg-[#080706] px-3 py-2.5 text-sm text-white outline-none focus:border-[#c4871a]/60 disabled:opacity-60"
+            >
+              {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={resendEmail}
+            disabled={sendingEmail}
+            className="border border-[#c4871a]/35 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#c4871a] hover:bg-[#c4871a]/10 disabled:opacity-60"
+          >
+            {sendingEmail ? "Enviando..." : "Reenviar correo"}
+          </button>
         </div>
         <div className="mt-5 border border-[#c4871a]/10 bg-[#080706] p-4">
           <p className="mb-3 text-xs uppercase tracking-[.12em] text-[#5B5A59]">Servicios</p>

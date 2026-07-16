@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { dashboardReservationSchema, reservationQuerySchema } from "@/lib/validations/reservation";
 import { reservationService } from "@/server/services/reservation.service";
 import { activityService } from "@/server/services/activity.service";
+import { emailService } from "@/server/services/email.service";
 
 const ADMIN_ROLES = new Set(["administrador", "editor", "finanzas"]);
 
@@ -50,6 +51,8 @@ export async function POST(request: Request) {
     }
 
     const reservation = await reservationService.create(validation.data);
+    const emailResult = await emailService.sendReservationConfirmation(reservation);
+    if (!emailResult.success) console.error("[ReservationEmail:manual-create]", emailResult.error);
 
     activityService.logFromSession(auth.session, {
       action: "reservation_created",

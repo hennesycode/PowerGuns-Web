@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { publicReservationSchema } from "@/lib/validations/reservation";
 import { paymentMethodService } from "@/server/services/payment-method.service";
 import { reservationService } from "@/server/services/reservation.service";
+import { emailService } from "@/server/services/email.service";
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +14,13 @@ export async function POST(request: Request) {
     }
 
     const reservation = await reservationService.create(validation.data);
+    const [customerEmail, adminEmail] = await Promise.all([
+      emailService.sendReservationConfirmation(reservation),
+      emailService.sendReservationAdminNotification(reservation),
+    ]);
+    if (!customerEmail.success) console.error("[ReservationEmail:customer]", customerEmail.error);
+    if (!adminEmail.success) console.error("[ReservationEmail:admin]", adminEmail.error);
+
     const paymentMethod = validation.data.paymentMethodId
       ? await paymentMethodService.getActiveById(validation.data.paymentMethodId)
       : null;

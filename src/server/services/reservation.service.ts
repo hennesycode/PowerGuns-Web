@@ -436,6 +436,16 @@ export const reservationService = {
     });
   },
 
+  async updateStatus(id: string, status: ReservationStatusInput) {
+    const reservation = await prisma.reservation.update({
+      where: { id },
+      data: { status },
+      include: { items: true, user: true },
+    });
+
+    return serializeReservation(reservation);
+  },
+
   async delete(id: string) {
     await prisma.reservation.delete({ where: { id } });
   },

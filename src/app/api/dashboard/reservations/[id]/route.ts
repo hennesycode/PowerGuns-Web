@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { updateReservationSchema } from "@/lib/validations/reservation";
+import { reservationStatusSchema, updateReservationSchema } from "@/lib/validations/reservation";
 import { reservationService } from "@/server/services/reservation.service";
 import { activityService } from "@/server/services/activity.service";
+import { emailService } from "@/server/services/email.service";
 
 const ADMIN_ROLES = new Set(["administrador", "editor", "finanzas"]);
 
@@ -53,7 +54,16 @@ export async function PUT(
     const reservation = await reservationService.update(id, validation.data);
 
     const statusChanged = existing && existing.status !== reservation.status;
+    const scheduleChanged = existing && (
+      existing.reservationDate !== reservation.reservationDate ||
+      existing.reservationTime !== reservation.reservationTime
+    );
     const action = statusChanged ? "reservation_status_changed" : "reservation_updated";
+
+    if (scheduleChanged) {
+      const emailResult = await emailService.sendReservationConfirmation(reservation);
+      if (!emailResult.success) console.error("[ReservationEmail:schedule-update]", emailResult.error);
+    }
 
     activityService.logFromSession(auth.session, {
       action,
@@ -94,6 +104,44 @@ export async function PUT(
     }
 
     return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const auth = await requireAdmin();
+    if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+    const { id } = await params;
+    const existing = await reservationService.getById(id);
+    if (!existing) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
+
+    const body = await request.json();
+    const validation = reservationStatusSchema.safeParse(body.status);
+    if (!validation.success) return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
+
+    const reservation = await reservationService.updateStatus(id, validation.data);
+
+    activityService.logFromSession(auth.session, {
+      action: "reservation_status_changed",
+      entityType: "reservation",
+      entityId: reservation.id,
+      entityName: reservation.reservationCode,
+      description: `Estado de reserva ${reservation.reservationCode} cambiado de ${existing.status} a ${reservation.status}`,
+      status: "success",
+      page: "/dashboard/reservas",
+      section: "Reservas",
+      metadata: { reservationCode: reservation.reservationCode, previousStatus: existing.status, newStatus: reservation.status },
+    });
+
+    return NextResponse.json(reservation);
+  } catch (error) {
+    console.error("[PATCH /api/dashboard/reservations/[id]]", error);
+    const message = error instanceof Error ? error.message : "No se pudo actualizar el estado";
+    return NextResponse.json({ error: message }, { status: message.includes("no encontrada") ? 404 : 400 });
   }
 }
 
