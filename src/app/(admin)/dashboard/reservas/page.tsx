@@ -153,6 +153,26 @@ function dateKeyToLocalDate(key: string) {
   return new Date(year, month - 1, day);
 }
 
+function getMonthRange(date: Date, monthOffset = 0) {
+  const start = new Date(date.getFullYear(), date.getMonth() + monthOffset, 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + monthOffset + 1, 1);
+  return { startKey: dateToKey(start), endKey: dateToKey(end) };
+}
+
+function isDateKeyInRange(dateKey: string, startKey: string, endKey: string) {
+  return dateKey >= startKey && dateKey < endKey;
+}
+
+function formatDelta(current: number, previous: number, formatter: (value: number) => string = String) {
+  const diff = current - previous;
+  const sign = diff > 0 ? "+" : diff < 0 ? "-" : "";
+  return {
+    text: `${sign}${formatter(Math.abs(diff))} vs mes pasado`,
+    positive: diff > 0,
+    negative: diff < 0,
+  };
+}
+
 function buildCalendarDays(monthDate: Date): CalendarDay[] {
   const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
   const start = new Date(firstOfMonth);
@@ -201,6 +221,7 @@ function reservationToForm(reservation: Reservation): FormState {
 
 export default function ReservasDashboardPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [metricReservations, setMetricReservations] = useState<Reservation[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -221,6 +242,13 @@ export default function ReservasDashboardPage() {
     setReservations(data.reservations ?? []);
   }, [date, query, status]);
 
+  const refreshMetricReservations = useCallback(async () => {
+    const res = await fetch("/api/dashboard/reservations");
+    if (!res.ok) throw new Error("No se pudieron cargar métricas de reservas");
+    const data = await res.json();
+    setMetricReservations(data.reservations ?? []);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -230,6 +258,7 @@ export default function ReservasDashboardPage() {
       .then(([reservationData, serviceData]) => {
         if (cancelled) return;
         setReservations(reservationData.reservations ?? []);
+        setMetricReservations(reservationData.reservations ?? []);
         setServices(serviceData.services ?? []);
       })
       .catch(() => toast.error("No se pudo cargar el módulo de reservas"))
@@ -248,11 +277,29 @@ export default function ReservasDashboardPage() {
     return () => window.clearTimeout(timeout);
   }, [refreshReservations]);
 
-  const totals = useMemo(() => ({
-    pending: reservations.filter((reservation) => reservation.status === "pending").length,
-    confirmed: reservations.filter((reservation) => reservation.status === "confirmed").length,
-    revenue: reservations.reduce((sum, reservation) => sum + reservation.total, 0),
-  }), [reservations]);
+  const totals = useMemo(() => {
+    const currentMonth = getMonthRange(new Date());
+    const previousMonth = getMonthRange(new Date(), -1);
+    const currentReservations = metricReservations.filter((reservation) => isDateKeyInRange(reservation.reservationDate, currentMonth.startKey, currentMonth.endKey));
+    const previousReservations = metricReservations.filter((reservation) => isDateKeyInRange(reservation.reservationDate, previousMonth.startKey, previousMonth.endKey));
+    const current = {
+      pending: currentReservations.filter((reservation) => reservation.status === "pending").length,
+      confirmed: currentReservations.filter((reservation) => reservation.status === "confirmed").length,
+      revenue: currentReservations.reduce((sum, reservation) => sum + reservation.total, 0),
+    };
+    const previous = {
+      pending: previousReservations.filter((reservation) => reservation.status === "pending").length,
+      confirmed: previousReservations.filter((reservation) => reservation.status === "confirmed").length,
+      revenue: previousReservations.reduce((sum, reservation) => sum + reservation.total, 0),
+    };
+
+    return {
+      ...current,
+      pendingDelta: formatDelta(current.pending, previous.pending),
+      confirmedDelta: formatDelta(current.confirmed, previous.confirmed),
+      revenueDelta: formatDelta(current.revenue, previous.revenue, formatCOP),
+    };
+  }, [metricReservations]);
 
   const reservationsByDate = useMemo(() => {
     const grouped = new Map<string, Reservation[]>();
@@ -278,6 +325,7 @@ export default function ReservasDashboardPage() {
       toast.success("Reserva eliminada correctamente");
       setDeleting(null);
       await refreshReservations();
+      await refreshMetricReservations();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo eliminar la reserva");
     }
@@ -287,9 +335,9 @@ export default function ReservasDashboardPage() {
     <AdminLayout title="Reservas">
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard label="Pendientes" value={String(totals.pending)} />
-          <MetricCard label="Confirmadas" value={String(totals.confirmed)} />
-          <MetricCard label="Valor listado" value={formatCOP(totals.revenue)} />
+          <MetricCard label="Pendientes este mes" value={String(totals.pending)} trend={totals.pendingDelta} />
+          <MetricCard label="Confirmadas este mes" value={String(totals.confirmed)} trend={totals.confirmedDelta} />
+          <MetricCard label="Valor listado este mes" value={formatCOP(totals.revenue)} trend={totals.revenueDelta} />
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -359,6 +407,7 @@ export default function ReservasDashboardPage() {
             setFormOpen(false);
             setEditing(null);
             await refreshReservations();
+            await refreshMetricReservations();
           }}
         />
       )}
@@ -374,6 +423,7 @@ export default function ReservasDashboardPage() {
           onUpdated={async (reservation) => {
             setViewing(reservation);
             await refreshReservations();
+            await refreshMetricReservations();
           }}
         />
       )}
@@ -389,11 +439,16 @@ export default function ReservasDashboardPage() {
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricCard({ label, value, trend }: { label: string; value: string; trend?: { text: string; positive: boolean; negative: boolean } }) {
   return (
     <div className="border border-[#c4871a]/12 bg-[#171513] p-5">
       <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#5B5A59]">{label}</p>
       <p className="mt-2 font-heading text-2xl font-bold uppercase text-white">{value}</p>
+      {trend && (
+        <p className={`mt-2 text-xs font-semibold ${trend.positive ? "text-green-400" : trend.negative ? "text-[#ff8174]" : "text-[#B2AAA7]"}`}>
+          {trend.text}
+        </p>
+      )}
     </div>
   );
 }
