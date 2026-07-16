@@ -793,8 +793,10 @@ function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
 }) {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<ReservationStatus | null>(null);
 
   const changeStatus = async (nextStatus: ReservationStatus) => {
+    if (nextStatus === reservation.status) return;
     setUpdatingStatus(true);
     try {
       const res = await fetch(`/api/dashboard/reservations/${reservation.id}`, {
@@ -804,12 +806,13 @@ function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo actualizar el estado");
-      toast.success("Estado actualizado correctamente");
+      toast.success(data.emailSent ? "Estado actualizado y correo enviado" : "Estado actualizado. No se pudo enviar el correo");
       await onUpdated(data);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo actualizar el estado");
     } finally {
       setUpdatingStatus(false);
+      setPendingStatus(null);
     }
   };
 
@@ -841,18 +844,25 @@ function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
           <InfoBox title="Método de pago" lines={[reservation.paymentMethodLabel || "No registrado"]} />
           <InfoBox title="Notas" lines={[reservation.notes || "Sin notas"]} />
         </div>
-        <div className="mt-5 grid gap-3 border border-[#c4871a]/10 bg-[#080706] p-4 md:grid-cols-[1fr_auto] md:items-end">
+        <div className="mt-5 border border-[#c4871a]/10 bg-[#080706] p-4">
           <label className="block">
             <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">Cambiar estado</span>
             <select
               value={reservation.status}
-              onChange={(event) => changeStatus(event.target.value as ReservationStatus)}
+              onChange={(event) => setPendingStatus(event.target.value as ReservationStatus)}
               disabled={updatingStatus}
               className="w-full border border-[#3C3A37] bg-[#080706] px-3 py-2.5 text-sm text-white outline-none focus:border-[#c4871a]/60 disabled:opacity-60"
             >
               {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
+        </div>
+        <div className="mt-5 border border-[#c4871a]/10 bg-[#080706] p-4">
+          <p className="mb-3 text-xs uppercase tracking-[.12em] text-[#5B5A59]">Servicios</p>
+          {reservation.services.map((item) => <div key={item.id} className="flex justify-between border-b border-[#171513] py-2 text-sm last:border-b-0"><span className="text-white">{item.serviceTitle} x {item.quantity}</span><span className="text-[#c4871a]">{formatCOP(item.total)}</span></div>)}
+          <div className="mt-3 space-y-1 border-t border-[#c4871a]/10 pt-3 text-sm"><div className="flex justify-between text-[#B2AAA7]"><span>Subtotal</span><span>{formatCOP(reservation.subtotal)}</span></div>{reservation.discount > 0 && <div className="flex justify-between text-[#c4871a]"><span>Descuento {reservation.couponCode}</span><span>-{formatCOP(reservation.discount)}</span></div>}<div className="flex justify-between font-heading text-lg font-bold uppercase text-white"><span>Total</span><span className="text-[#c4871a]">{formatCOP(reservation.total)}</span></div></div>
+        </div>
+        <div className="mt-5 grid gap-3 border-t border-[#c4871a]/10 pt-5 sm:grid-cols-2">
           <button
             type="button"
             onClick={resendEmail}
@@ -861,8 +871,6 @@ function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
           >
             {sendingEmail ? "Enviando..." : "Reenviar correo"}
           </button>
-        </div>
-        <div className="mt-5 flex justify-end border-t border-[#c4871a]/10 pt-5">
           <button
             type="button"
             onClick={() => onDelete(reservation)}
@@ -871,12 +879,21 @@ function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
             Eliminar reserva
           </button>
         </div>
-        <div className="mt-5 border border-[#c4871a]/10 bg-[#080706] p-4">
-          <p className="mb-3 text-xs uppercase tracking-[.12em] text-[#5B5A59]">Servicios</p>
-          {reservation.services.map((item) => <div key={item.id} className="flex justify-between border-b border-[#171513] py-2 text-sm last:border-b-0"><span className="text-white">{item.serviceTitle} x {item.quantity}</span><span className="text-[#c4871a]">{formatCOP(item.total)}</span></div>)}
-          <div className="mt-3 space-y-1 border-t border-[#c4871a]/10 pt-3 text-sm"><div className="flex justify-between text-[#B2AAA7]"><span>Subtotal</span><span>{formatCOP(reservation.subtotal)}</span></div>{reservation.discount > 0 && <div className="flex justify-between text-[#c4871a]"><span>Descuento {reservation.couponCode}</span><span>-{formatCOP(reservation.discount)}</span></div>}<div className="flex justify-between font-heading text-lg font-bold uppercase text-white"><span>Total</span><span className="text-[#c4871a]">{formatCOP(reservation.total)}</span></div></div>
-        </div>
       </div>
+      {pendingStatus && pendingStatus !== reservation.status && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md border border-[#c4871a]/25 bg-[#0F0D0B] p-6 shadow-2xl">
+            <h3 className="font-heading text-lg font-bold uppercase text-white">¿Cambiar estado?</h3>
+            <p className="mt-2 text-sm leading-6 text-[#B2AAA7]">
+              La reserva {reservation.reservationCode} cambiará de {statusLabels[reservation.status]} a {statusLabels[pendingStatus]}. Se enviará un correo al cliente con el nuevo estado y todos los datos de la reserva.
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => setPendingStatus(null)} disabled={updatingStatus} className="border border-[#3C3A37] px-4 py-2 text-sm text-[#B2AAA7] hover:text-white disabled:opacity-60">Cancelar</button>
+              <button type="button" onClick={() => changeStatus(pendingStatus)} disabled={updatingStatus} className="bg-[#c4871a] px-4 py-2 text-sm font-bold uppercase text-[#080706] hover:bg-[#d6a244] disabled:opacity-60">{updatingStatus ? "Actualizando..." : "Sí, cambiar estado"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -124,6 +124,8 @@ export async function PATCH(
     if (!validation.success) return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
 
     const reservation = await reservationService.updateStatus(id, validation.data);
+    const emailResult = await emailService.sendReservationConfirmation(reservation);
+    if (!emailResult.success) console.error("[ReservationEmail:status-update]", emailResult.error);
 
     activityService.logFromSession(auth.session, {
       action: "reservation_status_changed",
@@ -134,10 +136,15 @@ export async function PATCH(
       status: "success",
       page: "/dashboard/reservas",
       section: "Reservas",
-      metadata: { reservationCode: reservation.reservationCode, previousStatus: existing.status, newStatus: reservation.status },
+      metadata: {
+        reservationCode: reservation.reservationCode,
+        previousStatus: existing.status,
+        newStatus: reservation.status,
+        emailSent: emailResult.success,
+      },
     });
 
-    return NextResponse.json(reservation);
+    return NextResponse.json({ ...reservation, emailSent: emailResult.success });
   } catch (error) {
     console.error("[PATCH /api/dashboard/reservations/[id]]", error);
     const message = error instanceof Error ? error.message : "No se pudo actualizar el estado";
