@@ -28,6 +28,12 @@ interface PaymentFormState {
   isActive: boolean;
 }
 
+interface CompanyFormState {
+  companyName: string;
+  contactPhone: string;
+  companyEmail: string;
+}
+
 interface SlotInput {
   openTime: string;
   closeTime: string;
@@ -76,6 +82,12 @@ const emptyPaymentForm: PaymentFormState = {
   isActive: true,
 };
 
+const emptyCompanyForm: CompanyFormState = {
+  companyName: "",
+  contactPhone: "",
+  companyEmail: "",
+};
+
 function defaultDays(): DayInput[] {
   return DAYS.map((day) => ({
     dayOfWeek: day.dayOfWeek,
@@ -98,6 +110,9 @@ export default function ConfiguracionPage() {
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [paymentForm, setPaymentForm] = useState<PaymentFormState>(emptyPaymentForm);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [companyForm, setCompanyForm] = useState<CompanyFormState>(emptyCompanyForm);
+  const [companyLoading, setCompanyLoading] = useState(true);
+  const [companySaving, setCompanySaving] = useState(false);
 
   const loadPaymentMethods = useCallback(async () => {
     setPaymentsLoading(true);
@@ -163,6 +178,19 @@ export default function ConfiguracionPage() {
       })
       .catch(() => toast.error("No se pudieron cargar los métodos de pago"))
       .finally(() => { if (active) setPaymentsLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/dashboard/settings/company")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("No se pudieron cargar los datos de empresa");
+        const data = await res.json();
+        if (active) setCompanyForm(data.company ?? emptyCompanyForm);
+      })
+      .catch(() => toast.error("No se pudieron cargar los datos de empresa"))
+      .finally(() => { if (active) setCompanyLoading(false); });
     return () => { active = false; };
   }, []);
 
@@ -312,6 +340,26 @@ export default function ConfiguracionPage() {
     } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo actualizar el método de pago"); }
   };
 
+  const saveCompanySettings = async () => {
+    if (!companyForm.companyName.trim()) { toast.error("Ingresa el nombre de la empresa"); return; }
+    if (!companyForm.contactPhone.trim()) { toast.error("Ingresa el número de contacto"); return; }
+    if (!companyForm.companyEmail.trim()) { toast.error("Ingresa el correo de empresa"); return; }
+
+    setCompanySaving(true);
+    try {
+      const res = await fetch("/api/dashboard/settings/company", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(companyForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudieron guardar los datos de empresa");
+      setCompanyForm(data.company ?? companyForm);
+      toast.success("Datos de empresa guardados correctamente");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudieron guardar los datos de empresa"); }
+    finally { setCompanySaving(false); }
+  };
+
   return (
     <AdminLayout title="Configuración">
       <div className="space-y-6">
@@ -404,7 +452,17 @@ export default function ConfiguracionPage() {
           />
         )}
 
-        {activeTab !== "horarios" && activeTab !== "metodos-pago" && (
+        {activeTab === "empresa" && (
+          <CompanySection
+            form={companyForm}
+            loading={companyLoading}
+            saving={companySaving}
+            onFormChange={setCompanyForm}
+            onSave={saveCompanySettings}
+          />
+        )}
+
+        {activeTab !== "horarios" && activeTab !== "metodos-pago" && activeTab !== "empresa" && (
           <div className="flex flex-col items-center justify-center border border-dashed border-[#c4871a]/20 bg-[#0F0D0B] py-20 text-center">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mb-4 h-12 w-12 text-[#3C3A37]">
               <circle cx="12" cy="12" r="3" />
@@ -420,6 +478,58 @@ export default function ConfiguracionPage() {
         )}
       </div>
     </AdminLayout>
+  );
+}
+
+function CompanySection({
+  form,
+  loading,
+  saving,
+  onFormChange,
+  onSave,
+}: {
+  form: CompanyFormState;
+  loading: boolean;
+  saving: boolean;
+  onFormChange: (form: CompanyFormState) => void;
+  onSave: () => void;
+}) {
+  const inputClass = "w-full border border-[#3C3A37] bg-[#080706] px-3 py-3 text-sm text-white placeholder-[#5B5A59] outline-none transition-colors focus:border-[#c4871a]/60";
+
+  if (loading) {
+    return <div className="flex justify-center py-16"><span className="h-7 w-7 animate-spin rounded-full border-2 border-[#c4871a] border-t-transparent" /></div>;
+  }
+
+  return (
+    <section className="max-w-3xl border border-[#c4871a]/10 bg-[#0F0D0B] p-5">
+      <div className="mb-5">
+        <p className="font-heading text-sm font-bold uppercase tracking-[.12em] text-white">Información de empresa</p>
+        <p className="mt-1 text-xs text-[#5B5A59]">Configura los datos básicos de contacto del polígono.</p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block sm:col-span-2">
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#B2AAA7]">Nombre de la empresa *</span>
+          <input value={form.companyName} onChange={(event) => onFormChange({ ...form, companyName: event.target.value })} className={inputClass} placeholder="Nombre comercial" />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#B2AAA7]">Número de contacto *</span>
+          <input value={form.contactPhone} onChange={(event) => onFormChange({ ...form, contactPhone: event.target.value })} className={inputClass} placeholder="Teléfono o celular" />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.14em] text-[#B2AAA7]">Correo de empresa *</span>
+          <input type="email" value={form.companyEmail} onChange={(event) => onFormChange({ ...form, companyEmail: event.target.value })} className={inputClass} placeholder="correo@empresa.com" />
+        </label>
+      </div>
+
+      <div className="mt-6 flex justify-end border-t border-[#c4871a]/10 pt-5">
+        <button type="button" onClick={onSave} disabled={saving} className="bg-[#c4871a] px-6 py-3 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#080706] transition-colors hover:bg-[#d6a244] disabled:opacity-60">
+          {saving ? "Guardando..." : "Guardar datos"}
+        </button>
+      </div>
+    </section>
   );
 }
 
