@@ -365,6 +365,10 @@ export default function ReservasDashboardPage() {
         <ReservationDetailModal
           reservation={viewing}
           onClose={() => setViewing(null)}
+          onDelete={(reservation) => {
+            setViewing(null);
+            setDeleting(reservation);
+          }}
           onUpdated={async (reservation) => {
             setViewing(reservation);
             await refreshReservations();
@@ -724,9 +728,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block"><span className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">{label}</span>{children}</label>;
 }
 
-function ReservationDetailModal({ reservation, onClose, onUpdated }: {
+function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
   reservation: Reservation;
   onClose: () => void;
+  onDelete: (reservation: Reservation) => void;
   onUpdated: (reservation: Reservation) => void | Promise<void>;
 }) {
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -798,6 +803,15 @@ function ReservationDetailModal({ reservation, onClose, onUpdated }: {
             className="border border-[#c4871a]/35 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#c4871a] hover:bg-[#c4871a]/10 disabled:opacity-60"
           >
             {sendingEmail ? "Enviando..." : "Reenviar correo"}
+          </button>
+        </div>
+        <div className="mt-5 flex justify-end border-t border-[#c4871a]/10 pt-5">
+          <button
+            type="button"
+            onClick={() => onDelete(reservation)}
+            className="border border-[#B63A2B]/35 px-4 py-2.5 font-heading text-xs font-bold uppercase tracking-[.08em] text-[#B63A2B] hover:bg-[#B63A2B]/10"
+          >
+            Eliminar reserva
           </button>
         </div>
         <div className="mt-5 border border-[#c4871a]/10 bg-[#080706] p-4">
