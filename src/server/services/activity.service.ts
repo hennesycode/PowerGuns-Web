@@ -188,7 +188,7 @@ export const activityService = {
       todayActivity,
       errorsToday,
     ] = await Promise.all([
-      prisma.reservation.count({ where: { status: { not: "completed" } } }),
+      prisma.reservation.count({ where: { status: { notIn: ["completed", "canceled"] } } }),
       prisma.user.count(),
       prisma.user.count({ where: { createdAt: { gte: monthStart } } }),
       prisma.reservation.count({ where: { status: "pending" } }),
@@ -200,7 +200,7 @@ export const activityService = {
     try {
       const yesterdayStart = new Date(todayStart.getTime() - 86400000);
       yesterdayCount = await prisma.reservation.count({
-        where: { createdAt: { gte: yesterdayStart, lt: todayStart }, status: { not: "completed" } },
+        where: { createdAt: { gte: yesterdayStart, lt: todayStart }, status: { notIn: ["completed", "canceled"] } },
       });
     } catch { /* silent */ }
 

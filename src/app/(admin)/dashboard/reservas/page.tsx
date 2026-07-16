@@ -8,7 +8,7 @@ import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { colombiaDepartments, getCities } from "@/data/colombia-locations";
 import { BASE_RESERVATION_SLOTS } from "@/lib/timezone";
 
-type ReservationStatus = "pending" | "in_review" | "confirmed" | "completed";
+type ReservationStatus = "pending" | "in_review" | "confirmed" | "completed" | "canceled";
 
 type Reservation = {
   id: string;
@@ -104,6 +104,7 @@ const statusLabels: Record<ReservationStatus, string> = {
   in_review: "En revisión",
   confirmed: "Confirmada",
   completed: "Completada",
+  canceled: "Cancelada",
 };
 
 const statusClasses: Record<ReservationStatus, string> = {
@@ -111,6 +112,7 @@ const statusClasses: Record<ReservationStatus, string> = {
   in_review: "border-sky-500/30 bg-sky-500/10 text-sky-300",
   confirmed: "border-green-500/30 bg-green-500/10 text-green-400",
   completed: "border-[#5B5A59]/40 bg-[#5B5A59]/10 text-[#B2AAA7]",
+  canceled: "border-[#B63A2B]/35 bg-[#B63A2B]/10 text-[#ff8174]",
 };
 
 const weekDays = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -449,7 +451,7 @@ function ReservationsCalendar({ month, days, reservationsByDate, onMonthChange, 
                     <button key={reservation.id} type="button" onClick={() => onView(reservation)} className="block w-full border border-[#c4871a]/12 bg-[#080706] p-2 text-left transition-colors hover:border-[#c4871a]/45 hover:bg-[#c4871a]/5 focus:outline-none focus:ring-2 focus:ring-[#c4871a]/30">
                       <div className="flex items-start justify-between gap-2">
                         <span className="truncate text-[11px] font-semibold text-[#c4871a]">{reservation.reservationCode}</span>
-                        <span className={`h-2 w-2 shrink-0 rounded-full ${reservation.status === "confirmed" ? "bg-green-400" : reservation.status === "in_review" ? "bg-sky-300" : reservation.status === "completed" ? "bg-[#B2AAA7]" : "bg-[#d6a244]"}`} />
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${reservation.status === "confirmed" ? "bg-green-400" : reservation.status === "in_review" ? "bg-sky-300" : reservation.status === "completed" ? "bg-[#B2AAA7]" : reservation.status === "canceled" ? "bg-[#ff8174]" : "bg-[#d6a244]"}`} />
                       </div>
                       <p className="mt-1 truncate font-heading text-xs font-bold uppercase text-white">{reservation.firstName} {reservation.lastName}</p>
                       <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#B2AAA7]">

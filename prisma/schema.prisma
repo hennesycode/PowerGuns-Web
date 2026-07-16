@@ -26,6 +26,7 @@ enum ReservationStatus {
   in_review
   confirmed
   completed
+  canceled
 }
 
 enum GalleryMediaType {

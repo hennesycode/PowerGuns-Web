@@ -5,6 +5,7 @@ export const reservationStatusSchema = z.enum([
   "in_review",
   "confirmed",
   "completed",
+  "canceled",
 ]);
 
 export const identificationTypeSchema = z.enum([

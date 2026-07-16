@@ -45,6 +45,7 @@ const STATUS_LABELS: Record<string, string> = {
   in_review: "En revisión",
   confirmed: "Confirmada",
   completed: "Completada",
+  canceled: "Cancelada",
 };
 
 function getAdminEmails() {
