@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import path from "node:path";
 import { CONTACT, POLYGON_ADDRESS, SITE } from "@/lib/constants";
 
 type ReservationEmailData = {
@@ -31,17 +32,20 @@ type ReservationEmailData = {
 
 type SendResult = { success: true } | { success: false; error: string };
 
+type MailAttachment = {
+  filename: string;
+  path: string;
+  cid: string;
+};
+
 const MAPS_URL = "https://maps.app.goo.gl/aoPPrqEmKNNyweXe8";
+const LOGO_CID = "powerguns-logo";
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
   in_review: "En revisión",
   confirmed: "Confirmada",
   completed: "Completada",
 };
-
-function getAppUrl() {
-  return (process.env.NEXT_PUBLIC_APP_URL || SITE.url).replace(/\/$/, "");
-}
 
 function getAdminEmails() {
   return (process.env.ADMIN_NOTIFICATION_EMAILS || process.env.SMTP_ADMIN_EMAILS || "")
@@ -114,8 +118,7 @@ function reservationItemsHtml(reservation: ReservationEmailData) {
 }
 
 function buildReservationEmail(reservation: ReservationEmailData, variant: "customer" | "admin") {
-  const appUrl = getAppUrl();
-  const logoUrl = `${appUrl}/logo.jpg`;
+  const logoUrl = `cid:${LOGO_CID}`;
   const customerName = `${reservation.firstName} ${reservation.lastName}`;
   const title = variant === "admin" ? "Nueva reserva recibida" : "Confirmación de reserva";
   const intro = variant === "admin"
@@ -192,6 +195,14 @@ function buildReservationEmail(reservation: ReservationEmailData, variant: "cust
   return { html, text };
 }
 
+function getLogoAttachment(): MailAttachment {
+  return {
+    filename: "powerguns-logo.jpg",
+    path: path.join(process.cwd(), "public", "logo.jpg"),
+    cid: LOGO_CID,
+  };
+}
+
 async function sendMail(options: { to: string | string[]; subject: string; html: string; text: string }): Promise<SendResult> {
   const transporter = getTransporter();
   if (!transporter) {
@@ -208,6 +219,7 @@ async function sendMail(options: { to: string | string[]; subject: string; html:
       subject: options.subject,
       html: options.html,
       text: options.text,
+      attachments: [getLogoAttachment()],
     });
     return { success: true };
   } catch (error) {
