@@ -25,7 +25,6 @@ export function CartDrawer() {
     discount,
     total,
     removeItem,
-    updateQuantity,
     closeCart,
     setCouponCode,
     applyCoupon,
@@ -88,7 +87,7 @@ export function CartDrawer() {
             </h2>
             <p className="text-xs text-[#5B5A59] mt-0.5">
               {items.length > 0
-                ? `${items.reduce((s, i) => s + i.quantity, 0)} servicio${items.reduce((s, i) => s + i.quantity, 0) > 1 ? "s" : ""} agregado${items.reduce((s, i) => s + i.quantity, 0) > 1 ? "s" : ""}`
+                ? `${items.length} servicio${items.length > 1 ? "s" : ""} agregado${items.length > 1 ? "s" : ""}`
                 : "Servicios agregados"}
             </p>
           </div>
@@ -149,34 +148,8 @@ export function CartDrawer() {
                       {formatCOP(item.finalPrice)} c/u
                     </p>
 
-                    {/* Quantity controls */}
                     <div className="flex items-center gap-3 mt-2">
-                      <div className="flex items-center gap-0 border border-[#3C3A37]">
-                        <button
-                          onClick={() => {
-                            if (item.quantity <= 1) {
-                              handleRemoveItem(item.id);
-                            } else {
-                              updateQuantity(item.id, item.quantity - 1);
-                            }
-                          }}
-                          className="w-7 h-7 flex items-center justify-center text-[#B2AAA7] hover:text-white hover:bg-[#3C3A37] transition-colors text-sm leading-none"
-                          aria-label="Disminuir cantidad"
-                        >
-                          -
-                        </button>
-                        <span className="w-7 h-7 flex items-center justify-center text-white text-xs font-['Rajdhani',sans-serif] font-semibold">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="w-7 h-7 flex items-center justify-center text-[#B2AAA7] hover:text-white hover:bg-[#3C3A37] transition-colors text-sm leading-none"
-                          aria-label="Aumentar cantidad"
-                        >
-                          +
-                        </button>
-                      </div>
-
+                      <span className="text-[10px] text-[#B2AAA7]">Configura personas y horas al reservar</span>
                       <button
                         onClick={() => handleRemoveItem(item.id)}
                         className="text-[10px] text-[#5B5A59] hover:text-[#B63A2B] transition-colors font-['Rajdhani',sans-serif] font-semibold uppercase tracking-[.06em]"
@@ -190,7 +163,7 @@ export function CartDrawer() {
                   {/* Subtotal */}
                   <div className="text-right shrink-0">
                     <span className="font-['Rajdhani',sans-serif] font-bold text-sm text-white">
-                      {formatCOP(item.finalPrice * item.quantity)}
+                      {formatCOP(item.finalPrice * item.quantity * item.hours)}
                     </span>
                   </div>
                 </div>

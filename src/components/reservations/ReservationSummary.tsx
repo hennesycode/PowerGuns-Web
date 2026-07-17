@@ -23,7 +23,6 @@ export function ReservationSummary() {
     subtotal,
     discount,
     total,
-    updateQuantity,
     removeItem,
     setCouponCode,
     applyCoupon,
@@ -75,19 +74,12 @@ export function ReservationSummary() {
                   <h3 className="font-heading font-bold text-[11px] uppercase tracking-[.03em] text-white line-clamp-1">{item.name}</h3>
                   <p className="text-[10px] text-[#5B5A59]">{formatCOP(item.finalPrice)} c/u</p>
                   <div className="flex items-center gap-1.5 mt-1.5">
-                    <div className="flex items-center border border-[#3C3A37]">
-                      <button onClick={() => {
-                        if (item.quantity <= 1) handleRemove(item.id);
-                        else updateQuantity(item.id, item.quantity - 1);
-                      }} className="w-6 h-6 flex items-center justify-center text-[#B2AAA7] hover:text-white hover:bg-[#3C3A37] transition-colors text-xs focus:outline-none focus:ring-2 focus:ring-[#c4871a]/30" aria-label={`Disminuir cantidad de ${item.name}`}>-</button>
-                      <span className="w-6 h-6 flex items-center justify-center text-white text-[10px] font-['Rajdhani',sans-serif] font-semibold">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-6 h-6 flex items-center justify-center text-[#B2AAA7] hover:text-white hover:bg-[#3C3A37] transition-colors text-xs focus:outline-none focus:ring-2 focus:ring-[#c4871a]/30" aria-label={`Aumentar cantidad de ${item.name}`}>+</button>
-                    </div>
+                    <span className="text-[10px] text-[#B2AAA7]">Configura personas y horas en Fecha</span>
                     <button onClick={() => handleRemove(item.id)} className="text-[10px] text-[#5B5A59] hover:text-[#B63A2B] transition-colors font-['Rajdhani',sans-serif] uppercase tracking-[.04em] focus:outline-none focus:ring-2 focus:ring-[#B63A2B]/30" aria-label={`Eliminar ${item.name}`}>Eliminar</button>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="font-['Rajdhani',sans-serif] font-bold text-xs text-white">{formatCOP(item.finalPrice * item.quantity)}</span>
+                  <span className="font-['Rajdhani',sans-serif] font-bold text-xs text-white">{formatCOP(item.finalPrice * item.quantity * item.hours)}</span>
                 </div>
               </div>
             ))}

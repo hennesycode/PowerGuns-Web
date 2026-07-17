@@ -167,6 +167,15 @@ export async function DELETE(
     await reservationService.delete(id);
 
     if (existing) {
+      const [customerEmail, companyEmail] = await Promise.all([
+        emailService.sendReservationCancellationToCustomer(existing),
+        emailService.sendReservationCancellationToCompany(existing),
+      ]);
+      if (!customerEmail.success) console.error("[ReservationEmail:delete:customer]", customerEmail.error);
+      if (!companyEmail.success) console.error("[ReservationEmail:delete:company]", companyEmail.error);
+    }
+
+    if (existing) {
       activityService.logFromSession(auth.session, {
         action: "reservation_deleted",
         entityType: "reservation",

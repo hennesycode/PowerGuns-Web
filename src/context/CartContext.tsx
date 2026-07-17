@@ -19,6 +19,7 @@ export interface CartItem {
   finalPrice: number;
   durationMinutes: number;
   quantity: number;
+  hours: number;
 }
 
 interface CouponState {
@@ -40,9 +41,10 @@ interface CartContextValue {
   subtotal: number;
   discount: number;
   total: number;
-  addItem: (item: Omit<CartItem, "quantity">, options?: { silent?: boolean }) => void;
+  addItem: (item: Omit<CartItem, "quantity" | "hours">, options?: { silent?: boolean }) => void;
   removeItem: (id: number) => void;
   updateQuantity: (id: number, qty: number) => void;
+  updateItemConfig: (id: number, config: Partial<Pick<CartItem, "quantity" | "hours">>) => void;
   clearCart: () => void;
   openCart: () => void;
   closeCart: () => void;
@@ -85,14 +87,16 @@ function saveCoupon(coupon: CouponState | null) {
   else localStorage.removeItem(COUPON_KEY);
 }
 
-function getNextItems(items: CartItem[], item: Omit<CartItem, "quantity">) {
+function normalizeItems(items: CartItem[]) {
+  return items.map((item) => ({ ...item, quantity: item.quantity || 1, hours: item.hours || 1 }));
+}
+
+function getNextItems(items: CartItem[], item: Omit<CartItem, "quantity" | "hours">) {
   const existing = items.find((i) => i.id === item.id);
   if (existing) {
-    return items.map((i) =>
-      i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i,
-    );
+    return items.map((i) => i.id === item.id ? { ...i, ...item } : i);
   }
-  return [...items, { ...item, quantity: 1 }];
+  return [...items, { ...item, quantity: 1, hours: 1 }];
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -110,7 +114,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedCoupon = loadCoupon();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setItems(loadCart());
+    setItems(normalizeItems(loadCart()));
     setCoupon(storedCoupon);
     setCouponCode(storedCoupon?.code ?? "");
     setHydrated(true);
@@ -125,7 +129,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (hydrated) saveCoupon(coupon);
   }, [coupon, hydrated]);
 
-  const addItem = useCallback((item: Omit<CartItem, "quantity">, options?: { silent?: boolean }) => {
+  const addItem = useCallback((item: Omit<CartItem, "quantity" | "hours">, options?: { silent?: boolean }) => {
     setItems((prev) => {
       const next = getNextItems(prev, item);
       saveCart(next);
@@ -145,6 +149,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const updateItemConfig = useCallback((id: number, config: Partial<Pick<CartItem, "quantity" | "hours">>) => {
+    setItems((prev) => prev.map((item) => {
+      if (item.id !== id) return item;
+      return {
+        ...item,
+        ...(config.quantity !== undefined ? { quantity: Math.max(1, Math.min(20, config.quantity)) } : {}),
+        ...(config.hours !== undefined ? { hours: Math.max(1, Math.min(8, config.hours)) } : {}),
+      };
+    }));
+  }, []);
+
   const clearCart = useCallback(() => {
     setItems([]);
     setCoupon(null);
@@ -161,7 +176,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCouponError("");
   }, []);
 
-  const subtotal = items.reduce((sum, i) => sum + i.finalPrice * i.quantity, 0);
+  const subtotal = items.reduce((sum, i) => sum + i.finalPrice * i.quantity * i.hours, 0);
   const discount = coupon
     ? Math.min(
         subtotal,
@@ -186,7 +201,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           code: couponCode.trim(),
           subtotal,
-          items: items.map((i) => ({ serviceId: i.id, quantity: i.quantity })),
+          items: items.map((i) => ({ serviceId: i.id, quantity: i.quantity, hours: i.hours })),
         }),
       });
       const data = await res.json();
@@ -218,6 +233,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     addItem,
     removeItem,
     updateQuantity,
+    updateItemConfig,
     clearCart,
     openCart,
     closeCart,

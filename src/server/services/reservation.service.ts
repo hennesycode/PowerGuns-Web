@@ -84,6 +84,7 @@ function serializeReservation(reservation: ReservationWithItems) {
       imageUrl: item.imageUrl,
       unitPrice: item.unitPrice,
       quantity: item.quantity,
+      hours: item.hours,
       total: item.total,
     })),
     user: reservation.user
@@ -234,8 +235,10 @@ async function calculateTotals(
   input: PublicReservationInput | DashboardReservationInput | UpdateReservationInput,
 ) {
   const quantities = new Map<number, number>();
+  const hoursByService = new Map<number, number>();
   input.items.forEach((item) => {
     quantities.set(item.serviceId, (quantities.get(item.serviceId) ?? 0) + item.quantity);
+    hoursByService.set(item.serviceId, Math.max(1, item.hours ?? 1));
   });
 
   const serviceIds = Array.from(quantities.keys());
@@ -249,6 +252,7 @@ async function calculateTotals(
 
   const items = services.map((service) => {
     const quantity = quantities.get(service.id) ?? 1;
+    const hours = hoursByService.get(service.id) ?? 1;
     const unitPrice = Math.round(Number(service.finalPrice));
     return {
       serviceId: service.id,
@@ -257,7 +261,8 @@ async function calculateTotals(
       imageUrl: service.mainImageUrl,
       unitPrice,
       quantity,
-      total: unitPrice * quantity,
+      hours,
+      total: unitPrice * quantity * hours,
     };
   });
 
@@ -410,7 +415,7 @@ export const reservationService = {
 
   async create(input: PublicReservationInput | DashboardReservationInput) {
     return prisma.$transaction(async (tx) => {
-      const durationHours = input.durationHours ?? 1;
+      const durationHours = Math.max(1, input.items.reduce((sum, item) => sum + (item.hours ?? 1), 0));
       await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationHours);
       const user = await resolveUser(tx, input);
       const paymentMethodLabel = await resolvePaymentMethod(tx, input, !("status" in input));
@@ -463,7 +468,7 @@ export const reservationService = {
       const existing = await tx.reservation.findUnique({ where: { id } });
       if (!existing) throw new Error("Reserva no encontrada");
 
-      const durationHours = input.durationHours ?? 1;
+      const durationHours = Math.max(1, input.items.reduce((sum, item) => sum + (item.hours ?? 1), 0));
       await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationHours, id);
       const user = await resolveUser(tx, input);
       const paymentMethodLabel = await resolvePaymentMethod(tx, input, false);

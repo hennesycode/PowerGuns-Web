@@ -50,7 +50,7 @@ export function ReservaContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          items: items.map((item) => ({ serviceId: item.id, quantity: item.quantity })),
+          items: items.map((item) => ({ serviceId: item.id, quantity: item.quantity, hours: item.hours })),
           couponCode: couponCode.trim() || null,
         }),
       });

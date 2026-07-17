@@ -117,7 +117,7 @@ function buildFieldErrors(issues: Array<{ path: PropertyKey[]; message: string }
 }
 
 export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
-  const { items, subtotal, discount, total, coupon } = useCartContext();
+  const { items, subtotal, discount, total, coupon, updateItemConfig } = useCartContext();
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<ReservationFormData>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -137,6 +137,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   const selectedDate = form.reservationDate ? parseDateKey(form.reservationDate) : null;
   const cashPaymentMethods = paymentMethods.filter((method) => method.type === "cash");
   const transferPaymentMethods = paymentMethods.filter((method) => method.type === "bank_transfer");
+  const reservationDurationHours = Math.max(1, items.reduce((sum, item) => sum + item.hours, 0));
 
   useEffect(() => {
     try {
@@ -223,7 +224,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
 
     let cancelled = false;
     setAvailabilityLoading(true);
-    fetch(`/api/public/availability?date=${form.reservationDate}&durationHours=${form.durationHours}`)
+    fetch(`/api/public/availability?date=${form.reservationDate}&durationHours=${reservationDurationHours}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Error al consultar disponibilidad");
@@ -250,7 +251,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [form.durationHours, form.reservationDate, form.reservationTime]);
+  }, [form.reservationDate, form.reservationTime, reservationDurationHours]);
 
   const clearError = (field: string) => {
     setErrors((prev) => {
@@ -289,6 +290,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     const result = reservationScheduleSchema.safeParse({
       reservationDate: form.reservationDate,
       reservationTime: form.reservationTime,
+      durationHours: reservationDurationHours,
       scheduleNotes: form.scheduleNotes,
     });
 
@@ -345,7 +347,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
       return;
     }
 
-    const result = reservationSchema.safeParse(form);
+    const result = reservationSchema.safeParse({ ...form, durationHours: reservationDurationHours });
     if (!result.success) {
       setErrors(buildFieldErrors(result.error.issues));
       toast.error("Revisa los datos de la reserva");
@@ -568,6 +570,36 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
         {step === 2 && (
           <div className="space-y-6">
             <div className="rounded-none border border-[#c4871a]/12 bg-[#080706] p-4 sm:p-5">
+              <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#c4871a]">Cantidad de horas y personas</p>
+                  <p className="mt-1 text-xs text-[#5B5A59]">Configura cada servicio. El precio se actualiza automáticamente.</p>
+                </div>
+                <span className="w-fit border border-[#c4871a]/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#c4871a]">{reservationDurationHours} h ocupadas</span>
+              </div>
+
+              <div className="space-y-3">
+                {items.length === 0 ? (
+                  <p className="border border-dashed border-[#3C3A37] px-4 py-5 text-center text-sm text-[#5B5A59]">Agrega al menos un servicio para configurar la reserva.</p>
+                ) : items.map((item) => (
+                  <div key={item.id} className="border border-[#3C3A37] bg-[#11100e] p-3">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-heading text-sm font-bold uppercase tracking-[.04em] text-white">{item.name}</p>
+                        <p className="mt-1 text-xs text-[#5B5A59]">{formatCOP(item.finalPrice)} por persona/hora</p>
+                      </div>
+                      <span className="shrink-0 font-heading text-sm font-bold text-[#c4871a]">{formatCOP(item.finalPrice * item.quantity * item.hours)}</span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <CounterControl label="Personas" value={item.quantity} min={1} max={20} onChange={(value) => updateItemConfig(item.id, { quantity: value })} />
+                      <CounterControl label="Horas" value={item.hours} min={1} max={8} onChange={(value) => updateItemConfig(item.id, { hours: value })} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-none border border-[#c4871a]/12 bg-[#080706] p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <button type="button" onClick={() => changeMonth(-1)} disabled={prevMonthDisabled} className="flex h-10 w-10 items-center justify-center border border-[#3C3A37] text-[#B2AAA7] transition-colors hover:border-[#c4871a]/40 hover:text-[#c4871a] disabled:cursor-not-allowed disabled:opacity-30" aria-label="Mes anterior">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4"><polyline points="15 18 9 12 15 6" /></svg>
@@ -690,7 +722,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 <p className="mt-1 font-heading text-sm font-bold uppercase tracking-[.04em] text-white">
                   {selectedDate ? new Intl.DateTimeFormat("es-CO", { dateStyle: "full" }).format(selectedDate) : "Fecha pendiente"}
                 </p>
-                <p className="mt-1 text-xs text-[#B2AAA7]">{form.reservationTime ? getTimeLabel(form.reservationTime, availabilitySlots) : "Hora pendiente"}</p>
+                  <p className="mt-1 text-xs text-[#B2AAA7]">{form.reservationTime ? `${getTimeLabel(form.reservationTime, availabilitySlots)} · ${reservationDurationHours} h` : "Hora pendiente"}</p>
               </div>
             </div>
 
@@ -718,9 +750,9 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                   <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[#171513] py-2 last:border-b-0">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-white">{item.name}</p>
-                      <p className="text-xs text-[#5B5A59]">{item.quantity} x {formatCOP(item.finalPrice)}</p>
+                      <p className="text-xs text-[#5B5A59]">{item.quantity} persona(s) · {item.hours} hora(s) · {formatCOP(item.finalPrice)} c/u</p>
                     </div>
-                    <span className="shrink-0 text-sm font-bold text-[#c4871a]">{formatCOP(item.finalPrice * item.quantity)}</span>
+                    <span className="shrink-0 text-sm font-bold text-[#c4871a]">{formatCOP(item.finalPrice * item.quantity * item.hours)}</span>
                   </div>
                 ))}
               </div>
@@ -806,6 +838,19 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
             {loading ? "Procesando..." : "Confirmar reserva"}
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function CounterControl({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+  return (
+    <div>
+      <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.12em] text-[#B2AAA7]">{label}</span>
+      <div className="grid grid-cols-[42px_1fr_42px] border border-[#3C3A37] bg-[#080706]">
+        <button type="button" onClick={() => onChange(value - 1)} disabled={value <= min} className="h-10 text-[#B2AAA7] transition-colors hover:bg-[#3C3A37] hover:text-white disabled:opacity-40">-</button>
+        <span className="flex h-10 items-center justify-center border-x border-[#3C3A37] font-heading text-sm font-bold text-white">{value}</span>
+        <button type="button" onClick={() => onChange(value + 1)} disabled={value >= max} className="h-10 text-[#B2AAA7] transition-colors hover:bg-[#3C3A37] hover:text-white disabled:opacity-40">+</button>
       </div>
     </div>
   );

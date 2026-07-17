@@ -59,6 +59,7 @@ export const reservationSchema = reservationCustomerSchema.merge(reservationSche
 export const reservationItemSchema = z.object({
   serviceId: z.coerce.number().int().positive("Servicio inválido"),
   quantity: z.coerce.number().int().min(1, "Cantidad mínima 1").max(20, "Cantidad máxima 20"),
+  hours: z.coerce.number().int().min(1, "Horas mínimas 1").max(8, "Horas máximas 8").default(1),
 });
 
 export const publicReservationSchema = reservationSchema.extend({

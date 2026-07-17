@@ -332,6 +332,7 @@ model ReservationItem {
   imageUrl      String?
   unitPrice     Int
   quantity      Int
+  hours         Int         @default(1)
   total         Int
 
   createdAt     DateTime    @default(now())

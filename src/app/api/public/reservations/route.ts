@@ -32,9 +32,10 @@ export async function POST(request: Request) {
           reservationCode: reservation.reservationCode,
           firstName: reservation.firstName,
           lastName: reservation.lastName,
-          reservationDate: reservation.reservationDate,
-          reservationTimeLabel: reservation.reservationTimeLabel,
-          status: reservation.status,
+            reservationDate: reservation.reservationDate,
+            reservationTimeLabel: reservation.reservationTimeLabel,
+            durationHours: reservation.durationHours,
+            status: reservation.status,
           paymentMethodLabel: reservation.paymentMethodLabel,
           paymentMethod: paymentMethod
             ? {

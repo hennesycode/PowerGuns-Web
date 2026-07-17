@@ -44,6 +44,7 @@ type Reservation = {
     imageUrl: string | null;
     unitPrice: number;
     quantity: number;
+    hours: number;
     total: number;
   }>;
 };
@@ -94,11 +95,10 @@ type FormState = {
   city: string;
   reservationDate: string;
   reservationTime: string;
-  durationHours: number;
   scheduleNotes: string;
   couponCode: string;
   status: ReservationStatus;
-  items: Array<{ serviceId: number; quantity: number }>;
+  items: Array<{ serviceId: number; quantity: number; hours: number }>;
 };
 
 const statusLabels: Record<ReservationStatus, string> = {
@@ -133,7 +133,6 @@ const emptyForm: FormState = {
   city: "",
   reservationDate: "",
   reservationTime: "",
-  durationHours: 1,
   scheduleNotes: "",
   couponCode: "",
   status: "pending",
@@ -220,12 +219,15 @@ function reservationToForm(reservation: Reservation): FormState {
     city: reservation.city,
     reservationDate: reservation.reservationDate,
     reservationTime: reservation.reservationTime,
-    durationHours: reservation.durationHours,
     scheduleNotes: reservation.notes,
     couponCode: reservation.couponCode ?? "",
     status: reservation.status,
-    items: reservation.services.map((item) => ({ serviceId: item.serviceId, quantity: item.quantity })),
+    items: reservation.services.map((item) => ({ serviceId: item.serviceId, quantity: item.quantity, hours: item.hours })),
   };
+}
+
+function getReservationDurationFromItems(items: Array<{ hours: number }>) {
+  return Math.max(1, items.reduce((sum, item) => sum + item.hours, 0));
 }
 
 export default function ReservasDashboardPage() {
@@ -565,6 +567,7 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
   onSaved: () => void | Promise<void>;
 }) {
   const [form, setForm] = useState<FormState>(() => reservation ? reservationToForm(reservation) : emptyForm);
+  const [pickerMonth, setPickerMonth] = useState(() => reservation?.reservationDate ? dateKeyToLocalDate(reservation.reservationDate) : new Date());
   const [userMode, setUserMode] = useState<"new" | "existing">(reservation?.userId ? "existing" : "new");
   const [userQuery, setUserQuery] = useState("");
   const [users, setUsers] = useState<UserOption[]>([]);
@@ -589,18 +592,19 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
       setAvailability([]);
       return;
     }
-    const params = new URLSearchParams({ date: form.reservationDate, durationHours: String(form.durationHours) });
+    const params = new URLSearchParams({ date: form.reservationDate, durationHours: String(getReservationDurationFromItems(form.items)) });
     if (reservation) params.set("excludeReservationId", reservation.id);
     fetch(`/api/public/availability?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => setAvailability(data.slots ?? []))
       .catch(() => setAvailability([]));
-  }, [form.durationHours, form.reservationDate, reservation]);
+  }, [form.items, form.reservationDate, reservation]);
 
   const selectedServices = form.items
     .map((item) => ({ item, service: services.find((service) => service.id === item.serviceId) }))
-    .filter((entry): entry is { item: { serviceId: number; quantity: number }; service: ServiceOption } => Boolean(entry.service));
-  const subtotal = selectedServices.reduce((sum, entry) => sum + entry.service.finalPrice * entry.item.quantity, 0);
+    .filter((entry): entry is { item: { serviceId: number; quantity: number; hours: number }; service: ServiceOption } => Boolean(entry.service));
+  const durationHours = getReservationDurationFromItems(form.items);
+  const subtotal = selectedServices.reduce((sum, entry) => sum + entry.service.finalPrice * entry.item.quantity * entry.item.hours, 0);
 
   const setField = <K extends keyof FormState>(field: K, value: FormState[K]) => setForm((prev) => ({ ...prev, [field]: value }));
   const addService = (serviceId: number) => {
@@ -609,9 +613,7 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
       const existing = prev.items.find((item) => item.serviceId === serviceId);
       return {
         ...prev,
-        items: existing
-          ? prev.items.map((item) => item.serviceId === serviceId ? { ...item, quantity: item.quantity + 1 } : item)
-          : [...prev.items, { serviceId, quantity: 1 }],
+        items: existing ? prev.items : [...prev.items, { serviceId, quantity: 1, hours: 1 }],
       };
     });
   };
@@ -688,8 +690,16 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
               <Field label="País"><input value="Colombia" disabled className="input-admin opacity-60" /></Field>
               <Field label="Departamento"><SearchableSelect options={colombiaDepartments.map((d) => d.name)} value={form.department} onChange={(value) => setForm((prev) => ({ ...prev, department: value, city: "" }))} label="Departamento" /></Field>
               <Field label="Ciudad"><SearchableSelect options={cities} value={form.city} onChange={(value) => setField("city", value)} disabled={!form.department} label="Ciudad" /></Field>
-              <Field label="Fecha"><input type="date" value={form.reservationDate} onChange={(e) => setForm((prev) => ({ ...prev, reservationDate: e.target.value, reservationTime: "" }))} className="input-admin" /></Field>
-              <Field label="Horas a ocupar"><select value={form.durationHours} onChange={(e) => setForm((prev) => ({ ...prev, durationHours: Number(e.target.value), reservationTime: "" }))} className="input-admin">{[1, 2, 3, 4, 5, 6, 7, 8].map((hours) => <option key={hours} value={hours}>{hours} {hours === 1 ? "hora" : "horas"}</option>)}</select></Field>
+              <div className="sm:col-span-2">
+                <Field label="Fecha">
+                  <DashboardDatePicker
+                    month={pickerMonth}
+                    selectedDate={form.reservationDate}
+                    onMonthChange={setPickerMonth}
+                    onSelect={(value) => setForm((prev) => ({ ...prev, reservationDate: value, reservationTime: "" }))}
+                  />
+                </Field>
+              </div>
               <Field label="Hora"><select value={form.reservationTime} onChange={(e) => setField("reservationTime", e.target.value)} className="input-admin"><option value="">Seleccionar hora</option>{(availability.length ? availability : BASE_RESERVATION_SLOTS.map((slot) => ({ ...slot, available: false, reason: null }))).map((slot) => <option key={slot.time} value={slot.time} disabled={!slot.available && slot.time !== reservation?.reservationTime}>{slot.label}{!slot.available ? ` · ${slot.reason ?? 'no disponible'}` : ''}</option>)}</select></Field>
               <Field label="Estado"><select value={form.status} onChange={(e) => setField("status", e.target.value as ReservationStatus)} className="input-admin">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
               <Field label="Cupón"><input value={form.couponCode} onChange={(e) => setField("couponCode", e.target.value.toUpperCase())} className="input-admin" placeholder="POWER10" /></Field>
@@ -706,8 +716,12 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
               <div className="mt-3 space-y-2">
                 {selectedServices.map(({ item, service }) => (
                   <div key={service.id} className="flex items-center justify-between gap-3 border border-[#3C3A37] p-3 text-sm">
-                    <div className="min-w-0"><p className="truncate text-white">{service.name}</p><p className="text-xs text-[#5B5A59]">{formatCOP(service.finalPrice)} c/u</p></div>
-                    <div className="flex items-center gap-2"><input type="number" min={1} max={20} value={item.quantity} onChange={(e) => setForm((prev) => ({ ...prev, items: prev.items.map((row) => row.serviceId === service.id ? { ...row, quantity: Number(e.target.value) } : row) }))} className="w-16 border border-[#3C3A37] bg-[#080706] px-2 py-1 text-white" /><button type="button" onClick={() => setForm((prev) => ({ ...prev, items: prev.items.filter((row) => row.serviceId !== service.id) }))} className="text-xs text-[#B63A2B]">Quitar</button></div>
+                    <div className="min-w-0"><p className="truncate text-white">{service.name}</p><p className="text-xs text-[#5B5A59]">{formatCOP(service.finalPrice)} por persona/hora · Total {formatCOP(service.finalPrice * item.quantity * item.hours)}</p></div>
+                    <div className="grid shrink-0 gap-2 sm:grid-cols-[120px_100px_auto] sm:items-end">
+                      <MiniNumber label="Personas" value={item.quantity} min={1} max={20} onChange={(value) => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.map((row) => row.serviceId === service.id ? { ...row, quantity: value } : row) }))} />
+                      <MiniNumber label="Horas" value={item.hours} min={1} max={8} onChange={(value) => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.map((row) => row.serviceId === service.id ? { ...row, hours: value } : row) }))} />
+                      <button type="button" onClick={() => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.filter((row) => row.serviceId !== service.id) }))} className="text-xs text-[#B63A2B]">Quitar</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -718,8 +732,8 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
             <h3 className="font-heading text-base font-bold uppercase text-white">Resumen</h3>
             <div className="mt-4 space-y-2 text-sm text-[#B2AAA7]">
               <div className="flex justify-between"><span>Servicios</span><span>{form.items.length}</span></div>
-              <div className="flex justify-between"><span>Duración</span><span>{form.durationHours} {form.durationHours === 1 ? "hora" : "horas"}</span></div>
-              <div className="flex justify-between"><span>Horario ocupado</span><span>{form.reservationTime ? `${getSlotLabel(form.reservationTime)} - ${getEndTimeLabel(form.reservationTime, form.durationHours)}` : "Pendiente"}</span></div>
+              <div className="flex justify-between"><span>Duración</span><span>{durationHours} {durationHours === 1 ? "hora" : "horas"}</span></div>
+              <div className="flex justify-between"><span>Horario ocupado</span><span>{form.reservationTime ? `${getSlotLabel(form.reservationTime)} - ${getEndTimeLabel(form.reservationTime, durationHours)}` : "Pendiente"}</span></div>
               <div className="flex justify-between"><span>Subtotal</span><span>{formatCOP(subtotal)}</span></div>
               <div className="flex justify-between border-t border-[#c4871a]/10 pt-2 font-heading text-lg font-bold uppercase text-white"><span>Total estimado</span><span className="text-[#c4871a]">{formatCOP(subtotal)}</span></div>
               <p className="pt-2 text-xs text-[#5B5A59]">El backend recalcula cupón, descuento y total antes de guardar.</p>
@@ -740,6 +754,58 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block"><span className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">{label}</span>{children}</label>;
+}
+
+function MiniNumber({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[10px] uppercase tracking-[.08em] text-[#B2AAA7]">{label}</span>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(event) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))}
+        className="w-full border border-[#3C3A37] bg-[#080706] px-2 py-1.5 text-white"
+      />
+    </label>
+  );
+}
+
+function DashboardDatePicker({ month, selectedDate, onMonthChange, onSelect }: { month: Date; selectedDate: string; onMonthChange: (date: Date) => void; onSelect: (date: string) => void }) {
+  const title = monthFormatter.format(month);
+  const days = buildCalendarDays(month);
+  const todayKey = dateToKey(new Date());
+
+  return (
+    <div className="border border-[#3C3A37] bg-[#080706] p-3">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <button type="button" onClick={() => onMonthChange(new Date(month.getFullYear(), month.getMonth() - 1, 1))} className="border border-[#3C3A37] px-2 py-1.5 text-xs text-[#B2AAA7] hover:text-white">Anterior</button>
+        <p className="font-heading text-sm font-bold uppercase text-white first-letter:uppercase">{title}</p>
+        <button type="button" onClick={() => onMonthChange(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="border border-[#3C3A37] px-2 py-1.5 text-xs text-[#B2AAA7] hover:text-white">Siguiente</button>
+      </div>
+      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-[.08em] text-[#5B5A59]">
+        {weekDays.map((day) => <span key={day}>{day}</span>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((day) => {
+          const selected = selectedDate === day.key;
+          const disabled = !day.inMonth || day.key < todayKey;
+          return (
+            <button
+              key={day.key}
+              type="button"
+              onClick={() => onSelect(day.key)}
+              disabled={disabled}
+              className={`h-9 border text-xs font-semibold transition-colors ${selected ? "border-[#c4871a] bg-[#c4871a] text-[#080706]" : disabled ? "cursor-not-allowed border-[#171513] text-[#3C3A37]" : "border-[#26221e] text-[#B2AAA7] hover:border-[#c4871a]/50 hover:text-white"}`}
+            >
+              {day.date.getDate()}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
@@ -816,7 +882,7 @@ function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
         </div>
         <div className="mt-5 border border-[#c4871a]/10 bg-[#080706] p-4">
           <p className="mb-3 text-xs uppercase tracking-[.12em] text-[#5B5A59]">Servicios</p>
-          {reservation.services.map((item) => <div key={item.id} className="flex justify-between border-b border-[#171513] py-2 text-sm last:border-b-0"><span className="text-white">{item.serviceTitle} x {item.quantity}</span><span className="text-[#c4871a]">{formatCOP(item.total)}</span></div>)}
+          {reservation.services.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[#171513] py-2 text-sm last:border-b-0"><span className="text-white">{item.serviceTitle}<span className="block text-xs text-[#5B5A59]">{item.quantity} persona(s) · {item.hours} hora(s)</span></span><span className="shrink-0 text-[#c4871a]">{formatCOP(item.total)}</span></div>)}
           <div className="mt-3 space-y-1 border-t border-[#c4871a]/10 pt-3 text-sm"><div className="flex justify-between text-[#B2AAA7]"><span>Subtotal</span><span>{formatCOP(reservation.subtotal)}</span></div>{reservation.discount > 0 && <div className="flex justify-between text-[#c4871a]"><span>Descuento {reservation.couponCode}</span><span>-{formatCOP(reservation.discount)}</span></div>}<div className="flex justify-between font-heading text-lg font-bold uppercase text-white"><span>Total</span><span className="text-[#c4871a]">{formatCOP(reservation.total)}</span></div></div>
         </div>
         <div className="mt-5 grid gap-3 border-t border-[#c4871a]/10 pt-5 sm:grid-cols-2">

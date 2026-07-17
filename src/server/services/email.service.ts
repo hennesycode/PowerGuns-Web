@@ -27,6 +27,7 @@ type ReservationEmailData = {
   services: Array<{
     serviceTitle: string;
     quantity: number;
+    hours: number;
     unitPrice: number;
     total: number;
   }>;
@@ -130,7 +131,7 @@ function reservationItemsHtml(reservation: ReservationEmailData) {
         <tr>
           <td style="padding:12px 0;border-bottom:1px solid #2a2520;color:#f7f2eb;font-size:14px;">
             ${escapeHtml(item.serviceTitle)}<br>
-            <span style="color:#8f8782;font-size:12px;">Cantidad: ${item.quantity} · ${formatCOP(item.unitPrice)} c/u</span>
+            <span style="color:#8f8782;font-size:12px;">Personas: ${item.quantity} · Horas: ${item.hours} · ${formatCOP(item.unitPrice)} por persona/hora</span>
           </td>
           <td style="padding:12px 0;border-bottom:1px solid #2a2520;color:#c4871a;font-size:14px;font-weight:700;text-align:right;">${formatCOP(item.total)}</td>
         </tr>
@@ -139,13 +140,23 @@ function reservationItemsHtml(reservation: ReservationEmailData) {
     .join("");
 }
 
-function buildReservationEmail(reservation: ReservationEmailData, variant: "customer" | "admin") {
+function buildReservationEmail(reservation: ReservationEmailData, variant: "customer" | "admin" | "canceledCustomer" | "canceledAdmin") {
   const logoUrl = `cid:${LOGO_CID}`;
   const customerName = `${reservation.firstName} ${reservation.lastName}`;
-  const title = variant === "admin" ? "Nueva reserva recibida" : "Confirmación de reserva";
+  const title = variant === "admin"
+    ? "Nueva reserva recibida"
+    : variant === "canceledAdmin"
+      ? "Reserva cancelada"
+      : variant === "canceledCustomer"
+        ? "Tu reserva ha sido cancelada"
+        : "Confirmación de reserva";
   const intro = variant === "admin"
     ? `Hay una nueva reserva registrada por ${customerName}. Revisa los detalles y valida el seguimiento administrativo.`
-    : `Hola ${reservation.firstName}, recibimos tu reserva en ${SITE.name}. Estos son los datos confirmados para tu visita.`;
+    : variant === "canceledAdmin"
+      ? `La reserva ${reservation.reservationCode} de ${customerName} fue cancelada desde el panel administrativo. Conserva este registro para seguimiento interno.`
+      : variant === "canceledCustomer"
+        ? `Hola ${reservation.firstName}, te informamos que tu reserva en ${SITE.name} ha sido cancelada. Estos son los datos de la reserva cancelada.`
+        : `Hola ${reservation.firstName}, recibimos tu reserva en ${SITE.name}. Estos son los datos confirmados para tu visita.`;
 
   const html = `
     <!doctype html>
@@ -210,7 +221,7 @@ function buildReservationEmail(reservation: ReservationEmailData, variant: "cust
     `Fecha: ${formatReservationDate(reservation.reservationDate)}`,
     `Hora: ${reservation.reservationTimeLabel}`,
     `Duración: ${reservation.durationHours} ${reservation.durationHours === 1 ? "hora" : "horas"}`,
-    `Servicios: ${reservation.services.map((item) => `${item.serviceTitle} x ${item.quantity}`).join(", ")}`,
+    `Servicios: ${reservation.services.map((item) => `${item.serviceTitle} · ${item.quantity} persona(s) · ${item.hours} hora(s)`).join(", ")}`,
     `Total: ${formatCOP(reservation.total)}`,
     `Ubicación: ${POLYGON_ADDRESS}`,
     `Maps: ${MAPS_URL}`,
@@ -322,6 +333,29 @@ export const emailService = {
     return sendMail({
       to: admins,
       subject: `Nueva reserva ${reservation.reservationCode} | ${reservation.firstName} ${reservation.lastName}`,
+      ...email,
+    });
+  },
+
+  async sendReservationCancellationToCustomer(reservation: ReservationEmailData): Promise<SendResult> {
+    const canceledReservation = { ...reservation, status: "canceled" };
+    const email = buildReservationEmail(canceledReservation, "canceledCustomer");
+    return sendMail({
+      to: reservation.email,
+      subject: `Reserva cancelada ${reservation.reservationCode} | ${SITE.name}`,
+      ...email,
+    });
+  },
+
+  async sendReservationCancellationToCompany(reservation: ReservationEmailData): Promise<SendResult> {
+    const admins = await getReservationNotificationEmails();
+    if (admins.length === 0) return { success: false, error: "No hay correo de empresa configurado" };
+
+    const canceledReservation = { ...reservation, status: "canceled" };
+    const email = buildReservationEmail(canceledReservation, "canceledAdmin");
+    return sendMail({
+      to: admins,
+      subject: `Reserva cancelada ${reservation.reservationCode} | ${reservation.firstName} ${reservation.lastName}`,
       ...email,
     });
   },

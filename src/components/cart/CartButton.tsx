@@ -4,7 +4,7 @@ import { useCartContext } from "@/context/CartContext";
 
 export function CartButton() {
   const { items, hydrated, openCart } = useCartContext();
-  const count = items.reduce((sum, i) => sum + i.quantity, 0);
+  const count = items.length;
 
   return (
     <button
