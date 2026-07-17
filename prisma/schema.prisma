@@ -298,6 +298,7 @@ model Reservation {
   reservationDate      DateTime
   reservationTime      String
   durationHours        Int               @default(1)
+  durationMinutes      Int               @default(60)
   notes                String?           @db.Text
 
   status               ReservationStatus @default(pending)
@@ -333,6 +334,7 @@ model ReservationItem {
   unitPrice     Int
   quantity      Int
   hours         Int         @default(1)
+  durationMinutes Int      @default(60)
   total         Int
 
   createdAt     DateTime    @default(now())

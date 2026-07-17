@@ -28,6 +28,7 @@ type Reservation = {
   reservationTime: string;
   reservationTimeLabel: string;
   durationHours: number;
+  durationMinutes: number;
   notes: string;
   status: ReservationStatus;
   subtotal: number;
@@ -45,6 +46,7 @@ type Reservation = {
     unitPrice: number;
     quantity: number;
     hours: number;
+    durationMinutes: number;
     total: number;
   }>;
 };
@@ -54,6 +56,7 @@ type ServiceOption = {
   name: string;
   title: string;
   finalPrice: number;
+  durationMinutes: number;
   mainImageUrl: string;
 };
 
@@ -143,6 +146,14 @@ function formatCOP(value: number) {
   return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
 }
 
+function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours} ${hours === 1 ? "hora" : "horas"} y ${mins} minutos`;
+  if (hours > 0) return `${hours} ${hours === 1 ? "hora" : "horas"}`;
+  return `${mins} minutos`;
+}
+
 function dateToKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -192,9 +203,9 @@ function minutesToTime(minutes: number) {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-function getEndTimeLabel(time: string, durationHours: number) {
+function getEndTimeLabel(time: string, durationMinutes: number) {
   if (!time) return "Selecciona una hora";
-  return getSlotLabel(minutesToTime(timeToMinutes(time) + durationHours * 60));
+  return getSlotLabel(minutesToTime(timeToMinutes(time) + durationMinutes));
 }
 
 function getSlotLabel(time: string) {
@@ -226,8 +237,8 @@ function reservationToForm(reservation: Reservation): FormState {
   };
 }
 
-function getReservationDurationFromItems(items: Array<{ hours: number }>) {
-  return Math.max(1, items.reduce((sum, item) => sum + item.hours, 0));
+function getReservationDurationFromServices(entries: Array<{ item: { hours: number }; service: ServiceOption }>) {
+  return Math.max(30, entries.reduce((sum, entry) => sum + Math.max(30, entry.service.durationMinutes || 60) * entry.item.hours, 0));
 }
 
 export default function ReservasDashboardPage() {
@@ -465,7 +476,7 @@ function ReservationsCalendar({ month, days, reservationsByDate, onMonthChange, 
                       </div>
                       <p className="mt-1 truncate font-heading text-xs font-bold uppercase text-white">{reservation.firstName} {reservation.lastName}</p>
                       <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#B2AAA7]">
-                        <span>{reservation.reservationTimeLabel} · {reservation.durationHours} h</span>
+                        <span>{reservation.reservationTimeLabel} · {formatDuration(reservation.durationMinutes)}</span>
                         <span className="truncate text-[#5B5A59]">{reservation.services.length} serv.</span>
                       </div>
                     </button>
@@ -507,7 +518,7 @@ function ReservationsTable({ reservations, onView, onEdit, onDelete }: {
                 <td className="px-4 py-4">{reservation.phone}</td>
                 <td className="px-4 py-4">{reservation.reservationDate}</td>
                 <td className="px-4 py-4">{reservation.reservationTimeLabel}</td>
-                <td className="px-4 py-4">{reservation.durationHours} h</td>
+                <td className="px-4 py-4">{formatDuration(reservation.durationMinutes)}</td>
                 <td className="px-4 py-4">{reservation.services.map((item) => item.serviceTitle).join(', ')}</td>
                 <td className="px-4 py-4 font-semibold text-white">{formatCOP(reservation.total)}</td>
                 <td className="px-4 py-4"><StatusBadge status={reservation.status} /></td>
@@ -530,7 +541,7 @@ function ReservationsTable({ reservations, onView, onEdit, onDelete }: {
               <StatusBadge status={reservation.status} />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[#B2AAA7]">
-              <span>{reservation.reservationDate}</span><span>{reservation.reservationTimeLabel} · {reservation.durationHours} h</span>
+              <span>{reservation.reservationDate}</span><span>{reservation.reservationTimeLabel} · {formatDuration(reservation.durationMinutes)}</span>
               <span>{reservation.identificationNumber}</span><span>{formatCOP(reservation.total)}</span>
             </div>
             <div className="mt-4"><ActionButtons reservation={reservation} onView={onView} onEdit={onEdit} onDelete={onDelete} /></div>
@@ -592,18 +603,22 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
       setAvailability([]);
       return;
     }
-    const params = new URLSearchParams({ date: form.reservationDate, durationHours: String(getReservationDurationFromItems(form.items)) });
+    const durationMinutes = Math.max(30, form.items.reduce((sum, item) => {
+      const service = services.find((option) => option.id === item.serviceId);
+      return sum + Math.max(30, service?.durationMinutes || 60) * item.hours;
+    }, 0));
+    const params = new URLSearchParams({ date: form.reservationDate, durationMinutes: String(durationMinutes) });
     if (reservation) params.set("excludeReservationId", reservation.id);
     fetch(`/api/public/availability?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => setAvailability(data.slots ?? []))
       .catch(() => setAvailability([]));
-  }, [form.items, form.reservationDate, reservation]);
+  }, [form.items, form.reservationDate, reservation, services]);
 
   const selectedServices = form.items
     .map((item) => ({ item, service: services.find((service) => service.id === item.serviceId) }))
     .filter((entry): entry is { item: { serviceId: number; quantity: number; hours: number }; service: ServiceOption } => Boolean(entry.service));
-  const durationHours = getReservationDurationFromItems(form.items);
+  const durationMinutes = getReservationDurationFromServices(selectedServices);
   const subtotal = selectedServices.reduce((sum, entry) => sum + entry.service.finalPrice * entry.item.quantity * entry.item.hours, 0);
 
   const setField = <K extends keyof FormState>(field: K, value: FormState[K]) => setForm((prev) => ({ ...prev, [field]: value }));
@@ -716,10 +731,10 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
               <div className="mt-3 space-y-2">
                 {selectedServices.map(({ item, service }) => (
                   <div key={service.id} className="flex items-center justify-between gap-3 border border-[#3C3A37] p-3 text-sm">
-                    <div className="min-w-0"><p className="truncate text-white">{service.name}</p><p className="text-xs text-[#5B5A59]">{formatCOP(service.finalPrice)} por persona/hora · Total {formatCOP(service.finalPrice * item.quantity * item.hours)}</p></div>
+                    <div className="min-w-0"><p className="truncate text-white">{service.name}</p><p className="text-xs text-[#5B5A59]">Duración base: {formatDuration(service.durationMinutes)} · {formatCOP(service.finalPrice)} por persona · Total {formatCOP(service.finalPrice * item.quantity * item.hours)}</p></div>
                     <div className="grid shrink-0 gap-2 sm:grid-cols-[120px_100px_auto] sm:items-end">
                       <MiniNumber label="Personas" value={item.quantity} min={1} max={20} onChange={(value) => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.map((row) => row.serviceId === service.id ? { ...row, quantity: value } : row) }))} />
-                      <MiniNumber label="Horas" value={item.hours} min={1} max={8} onChange={(value) => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.map((row) => row.serviceId === service.id ? { ...row, hours: value } : row) }))} />
+                      <MiniNumber label="Tiempo" suffix="x" value={item.hours} min={1} max={8} onChange={(value) => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.map((row) => row.serviceId === service.id ? { ...row, hours: value } : row) }))} />
                       <button type="button" onClick={() => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.filter((row) => row.serviceId !== service.id) }))} className="text-xs text-[#B63A2B]">Quitar</button>
                     </div>
                   </div>
@@ -732,8 +747,8 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
             <h3 className="font-heading text-base font-bold uppercase text-white">Resumen</h3>
             <div className="mt-4 space-y-2 text-sm text-[#B2AAA7]">
               <div className="flex justify-between"><span>Servicios</span><span>{form.items.length}</span></div>
-              <div className="flex justify-between"><span>Duración</span><span>{durationHours} {durationHours === 1 ? "hora" : "horas"}</span></div>
-              <div className="flex justify-between"><span>Horario ocupado</span><span>{form.reservationTime ? `${getSlotLabel(form.reservationTime)} - ${getEndTimeLabel(form.reservationTime, durationHours)}` : "Pendiente"}</span></div>
+              <div className="flex justify-between"><span>Duración</span><span>{formatDuration(durationMinutes)}</span></div>
+              <div className="flex justify-between"><span>Horario ocupado</span><span>{form.reservationTime ? `${getSlotLabel(form.reservationTime)} - ${getEndTimeLabel(form.reservationTime, durationMinutes)}` : "Pendiente"}</span></div>
               <div className="flex justify-between"><span>Subtotal</span><span>{formatCOP(subtotal)}</span></div>
               <div className="flex justify-between border-t border-[#c4871a]/10 pt-2 font-heading text-lg font-bold uppercase text-white"><span>Total estimado</span><span className="text-[#c4871a]">{formatCOP(subtotal)}</span></div>
               <p className="pt-2 text-xs text-[#5B5A59]">El backend recalcula cupón, descuento y total antes de guardar.</p>
@@ -756,7 +771,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block"><span className="mb-1.5 block text-xs font-semibold uppercase tracking-[.08em] text-[#B2AAA7]">{label}</span>{children}</label>;
 }
 
-function MiniNumber({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+function MiniNumber({ label, value, suffix, min, max, onChange }: { label: string; value: number; suffix?: string; min: number; max: number; onChange: (value: number) => void }) {
   return (
     <label className="block">
       <span className="mb-1 block text-[10px] uppercase tracking-[.08em] text-[#B2AAA7]">{label}</span>
@@ -768,6 +783,7 @@ function MiniNumber({ label, value, min, max, onChange }: { label: string; value
         onChange={(event) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || min)))}
         className="w-full border border-[#3C3A37] bg-[#080706] px-2 py-1.5 text-white"
       />
+      {suffix && <span className="mt-1 block text-[10px] text-[#5B5A59]">Multiplicador {value}{suffix}</span>}
     </label>
   );
 }
@@ -862,7 +878,7 @@ function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <InfoBox title="Cliente" lines={[`${reservation.firstName} ${reservation.lastName}`, reservation.identificationNumber, reservation.email, reservation.phone]} />
-          <InfoBox title="Fecha y estado" lines={[reservation.reservationDate, `${reservation.reservationTimeLabel} - ${getEndTimeLabel(reservation.reservationTime, reservation.durationHours)}`, `${reservation.durationHours} ${reservation.durationHours === 1 ? "hora" : "horas"} ocupadas`, statusLabels[reservation.status]]} />
+          <InfoBox title="Fecha y estado" lines={[reservation.reservationDate, `${reservation.reservationTimeLabel} - ${getEndTimeLabel(reservation.reservationTime, reservation.durationMinutes)}`, `${formatDuration(reservation.durationMinutes)} ocupadas`, statusLabels[reservation.status]]} />
           <InfoBox title="Ubicación" lines={[reservation.address, `${reservation.city}, ${reservation.department}`, reservation.country]} />
           <InfoBox title="Método de pago" lines={[reservation.paymentMethodLabel || "No registrado"]} />
           <InfoBox title="Notas" lines={[reservation.notes || "Sin notas"]} />
@@ -882,7 +898,7 @@ function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
         </div>
         <div className="mt-5 border border-[#c4871a]/10 bg-[#080706] p-4">
           <p className="mb-3 text-xs uppercase tracking-[.12em] text-[#5B5A59]">Servicios</p>
-          {reservation.services.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[#171513] py-2 text-sm last:border-b-0"><span className="text-white">{item.serviceTitle}<span className="block text-xs text-[#5B5A59]">{item.quantity} persona(s) · {item.hours} hora(s)</span></span><span className="shrink-0 text-[#c4871a]">{formatCOP(item.total)}</span></div>)}
+          {reservation.services.map((item) => <div key={item.id} className="flex justify-between gap-3 border-b border-[#171513] py-2 text-sm last:border-b-0"><span className="text-white">{item.serviceTitle}<span className="block text-xs text-[#5B5A59]">{item.quantity} persona(s) · {formatDuration(item.durationMinutes)}</span></span><span className="shrink-0 text-[#c4871a]">{formatCOP(item.total)}</span></div>)}
           <div className="mt-3 space-y-1 border-t border-[#c4871a]/10 pt-3 text-sm"><div className="flex justify-between text-[#B2AAA7]"><span>Subtotal</span><span>{formatCOP(reservation.subtotal)}</span></div>{reservation.discount > 0 && <div className="flex justify-between text-[#c4871a]"><span>Descuento {reservation.couponCode}</span><span>-{formatCOP(reservation.discount)}</span></div>}<div className="flex justify-between font-heading text-lg font-bold uppercase text-white"><span>Total</span><span className="text-[#c4871a]">{formatCOP(reservation.total)}</span></div></div>
         </div>
         <div className="mt-5 grid gap-3 border-t border-[#c4871a]/10 pt-5 sm:grid-cols-2">

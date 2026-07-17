@@ -17,6 +17,7 @@ type ReservationEmailData = {
   reservationDate: string;
   reservationTimeLabel: string;
   durationHours: number;
+  durationMinutes: number;
   status: string;
   subtotal: number;
   discount: number;
@@ -28,6 +29,7 @@ type ReservationEmailData = {
     serviceTitle: string;
     quantity: number;
     hours: number;
+    durationMinutes: number;
     unitPrice: number;
     total: number;
   }>;
@@ -111,6 +113,14 @@ function formatReservationDate(dateKey: string) {
   });
 }
 
+function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours} ${hours === 1 ? "hora" : "horas"} y ${mins} minutos`;
+  if (hours > 0) return `${hours} ${hours === 1 ? "hora" : "horas"}`;
+  return `${mins} minutos`;
+}
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -131,7 +141,7 @@ function reservationItemsHtml(reservation: ReservationEmailData) {
         <tr>
           <td style="padding:12px 0;border-bottom:1px solid #2a2520;color:#f7f2eb;font-size:14px;">
             ${escapeHtml(item.serviceTitle)}<br>
-            <span style="color:#8f8782;font-size:12px;">Personas: ${item.quantity} · Horas: ${item.hours} · ${formatCOP(item.unitPrice)} por persona/hora</span>
+            <span style="color:#8f8782;font-size:12px;">Personas: ${item.quantity} · Duración: ${formatDuration(item.durationMinutes)} · ${formatCOP(item.unitPrice)} por persona</span>
           </td>
           <td style="padding:12px 0;border-bottom:1px solid #2a2520;color:#c4871a;font-size:14px;font-weight:700;text-align:right;">${formatCOP(item.total)}</td>
         </tr>
@@ -184,7 +194,7 @@ function buildReservationEmail(reservation: ReservationEmailData, variant: "cust
                   ${detailRow("Teléfono", reservation.phone)}
                   ${detailRow("Fecha", formatReservationDate(reservation.reservationDate))}
                   ${detailRow("Hora", reservation.reservationTimeLabel)}
-                  ${detailRow("Duración", `${reservation.durationHours} ${reservation.durationHours === 1 ? "hora" : "horas"}`)}
+                  ${detailRow("Duración", formatDuration(reservation.durationMinutes))}
                   ${detailRow("Estado", STATUS_LABELS[reservation.status] ?? reservation.status)}
                   ${detailRow("Método de pago", reservation.paymentMethodLabel || "No registrado")}
                 </table>
@@ -220,8 +230,8 @@ function buildReservationEmail(reservation: ReservationEmailData, variant: "cust
     `Cliente: ${customerName}`,
     `Fecha: ${formatReservationDate(reservation.reservationDate)}`,
     `Hora: ${reservation.reservationTimeLabel}`,
-    `Duración: ${reservation.durationHours} ${reservation.durationHours === 1 ? "hora" : "horas"}`,
-    `Servicios: ${reservation.services.map((item) => `${item.serviceTitle} · ${item.quantity} persona(s) · ${item.hours} hora(s)`).join(", ")}`,
+    `Duración: ${formatDuration(reservation.durationMinutes)}`,
+    `Servicios: ${reservation.services.map((item) => `${item.serviceTitle} · ${item.quantity} persona(s) · ${formatDuration(item.durationMinutes)}`).join(", ")}`,
     `Total: ${formatCOP(reservation.total)}`,
     `Ubicación: ${POLYGON_ADDRESS}`,
     `Maps: ${MAPS_URL}`,

@@ -6,9 +6,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date") ?? "";
     const excludeReservationId = searchParams.get("excludeReservationId") ?? undefined;
-    const durationHours = Number(searchParams.get("durationHours") || 1);
+    const durationMinutes = Number(searchParams.get("durationMinutes") || 60);
 
-    const availability = await reservationService.getAvailability(date, excludeReservationId, durationHours);
+    const availability = await reservationService.getAvailability(date, excludeReservationId, durationMinutes);
     return NextResponse.json(availability);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error al consultar disponibilidad";

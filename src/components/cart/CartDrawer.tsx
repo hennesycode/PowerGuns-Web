@@ -13,6 +13,14 @@ function formatCOP(value: number): string {
   }).format(value);
 }
 
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours} h ${mins} min`;
+  if (hours > 0) return `${hours} h`;
+  return `${mins} min`;
+}
+
 export function CartDrawer() {
   const {
     items,
@@ -145,7 +153,7 @@ export function CartDrawer() {
 
                     {/* Price */}
                     <p className="font-['Rajdhani',sans-serif] font-semibold text-sm text-[#c4871a] mt-1">
-                      {formatCOP(item.finalPrice)} c/u
+                      {formatCOP(item.finalPrice)} · {formatDuration(item.durationMinutes)}
                     </p>
 
                     <div className="flex items-center gap-3 mt-2">

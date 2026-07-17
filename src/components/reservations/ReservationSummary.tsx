@@ -13,6 +13,14 @@ function formatCOP(value: number): string {
   }).format(value);
 }
 
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours} h ${mins} min`;
+  if (hours > 0) return `${hours} h`;
+  return `${mins} min`;
+}
+
 export function ReservationSummary() {
   const {
     items,
@@ -72,7 +80,7 @@ export function ReservationSummary() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-heading font-bold text-[11px] uppercase tracking-[.03em] text-white line-clamp-1">{item.name}</h3>
-                  <p className="text-[10px] text-[#5B5A59]">{formatCOP(item.finalPrice)} c/u</p>
+                  <p className="text-[10px] text-[#5B5A59]">{formatCOP(item.finalPrice)} · {formatDuration(item.durationMinutes)}</p>
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span className="text-[10px] text-[#B2AAA7]">Configura personas y horas en Fecha</span>
                     <button onClick={() => handleRemove(item.id)} className="text-[10px] text-[#5B5A59] hover:text-[#B63A2B] transition-colors font-['Rajdhani',sans-serif] uppercase tracking-[.04em] focus:outline-none focus:ring-2 focus:ring-[#B63A2B]/30" aria-label={`Eliminar ${item.name}`}>Eliminar</button>

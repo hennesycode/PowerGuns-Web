@@ -77,6 +77,14 @@ function formatCOP(value: number): string {
   }).format(value);
 }
 
+function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours} ${hours === 1 ? "hora" : "horas"} y ${mins} minutos`;
+  if (hours > 0) return `${hours} ${hours === 1 ? "hora" : "horas"}`;
+  return `${mins} minutos`;
+}
+
 function getTodayStart() {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
@@ -137,7 +145,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   const selectedDate = form.reservationDate ? parseDateKey(form.reservationDate) : null;
   const cashPaymentMethods = paymentMethods.filter((method) => method.type === "cash");
   const transferPaymentMethods = paymentMethods.filter((method) => method.type === "bank_transfer");
-  const reservationDurationHours = Math.max(1, items.reduce((sum, item) => sum + item.hours, 0));
+  const reservationDurationMinutes = Math.max(30, items.reduce((sum, item) => sum + Math.max(30, item.durationMinutes || 60) * item.hours, 0));
 
   useEffect(() => {
     try {
@@ -224,7 +232,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
 
     let cancelled = false;
     setAvailabilityLoading(true);
-    fetch(`/api/public/availability?date=${form.reservationDate}&durationHours=${reservationDurationHours}`)
+    fetch(`/api/public/availability?date=${form.reservationDate}&durationMinutes=${reservationDurationMinutes}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Error al consultar disponibilidad");
@@ -251,7 +259,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [form.reservationDate, form.reservationTime, reservationDurationHours]);
+  }, [form.reservationDate, form.reservationTime, reservationDurationMinutes]);
 
   const clearError = (field: string) => {
     setErrors((prev) => {
@@ -290,7 +298,8 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     const result = reservationScheduleSchema.safeParse({
       reservationDate: form.reservationDate,
       reservationTime: form.reservationTime,
-      durationHours: reservationDurationHours,
+      durationHours: Math.max(1, Math.ceil(reservationDurationMinutes / 60)),
+      durationMinutes: reservationDurationMinutes,
       scheduleNotes: form.scheduleNotes,
     });
 
@@ -347,7 +356,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
       return;
     }
 
-    const result = reservationSchema.safeParse({ ...form, durationHours: reservationDurationHours });
+    const result = reservationSchema.safeParse({ ...form, durationHours: Math.max(1, Math.ceil(reservationDurationMinutes / 60)), durationMinutes: reservationDurationMinutes });
     if (!result.success) {
       setErrors(buildFieldErrors(result.error.issues));
       toast.error("Revisa los datos de la reserva");
@@ -575,7 +584,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                   <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#c4871a]">Cantidad de horas y personas</p>
                   <p className="mt-1 text-xs text-[#5B5A59]">Configura cada servicio. El precio se actualiza automáticamente.</p>
                 </div>
-                <span className="w-fit border border-[#c4871a]/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#c4871a]">{reservationDurationHours} h ocupadas</span>
+                <span className="w-fit border border-[#c4871a]/20 px-2 py-1 text-[10px] font-bold uppercase tracking-[.1em] text-[#c4871a]">{formatDuration(reservationDurationMinutes)} ocupadas</span>
               </div>
 
               <div className="space-y-3">
@@ -586,13 +595,13 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                     <div className="mb-3 flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-heading text-sm font-bold uppercase tracking-[.04em] text-white">{item.name}</p>
-                        <p className="mt-1 text-xs text-[#5B5A59]">{formatCOP(item.finalPrice)} por persona/hora</p>
+                        <p className="mt-1 text-xs text-[#5B5A59]">Duración base: {formatDuration(item.durationMinutes)} · {formatCOP(item.finalPrice)} por persona</p>
                       </div>
                       <span className="shrink-0 font-heading text-sm font-bold text-[#c4871a]">{formatCOP(item.finalPrice * item.quantity * item.hours)}</span>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <CounterControl label="Personas" value={item.quantity} min={1} max={20} onChange={(value) => updateItemConfig(item.id, { quantity: value })} />
-                      <CounterControl label="Horas" value={item.hours} min={1} max={8} onChange={(value) => updateItemConfig(item.id, { hours: value })} />
+                      <CounterControl label="Tiempo" value={item.hours} suffix="x" min={1} max={8} onChange={(value) => updateItemConfig(item.id, { hours: value })} />
                     </div>
                   </div>
                 ))}
@@ -722,7 +731,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 <p className="mt-1 font-heading text-sm font-bold uppercase tracking-[.04em] text-white">
                   {selectedDate ? new Intl.DateTimeFormat("es-CO", { dateStyle: "full" }).format(selectedDate) : "Fecha pendiente"}
                 </p>
-                  <p className="mt-1 text-xs text-[#B2AAA7]">{form.reservationTime ? `${getTimeLabel(form.reservationTime, availabilitySlots)} · ${reservationDurationHours} h` : "Hora pendiente"}</p>
+                  <p className="mt-1 text-xs text-[#B2AAA7]">{form.reservationTime ? `${getTimeLabel(form.reservationTime, availabilitySlots)} · ${formatDuration(reservationDurationMinutes)}` : "Hora pendiente"}</p>
               </div>
             </div>
 
@@ -750,7 +759,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                   <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[#171513] py-2 last:border-b-0">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-white">{item.name}</p>
-                      <p className="text-xs text-[#5B5A59]">{item.quantity} persona(s) · {item.hours} hora(s) · {formatCOP(item.finalPrice)} c/u</p>
+                      <p className="text-xs text-[#5B5A59]">{item.quantity} persona(s) · {formatDuration(item.durationMinutes * item.hours)} · {formatCOP(item.finalPrice)} c/u</p>
                     </div>
                     <span className="shrink-0 text-sm font-bold text-[#c4871a]">{formatCOP(item.finalPrice * item.quantity * item.hours)}</span>
                   </div>
@@ -843,13 +852,13 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   );
 }
 
-function CounterControl({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+function CounterControl({ label, value, suffix, min, max, onChange }: { label: string; value: number; suffix?: string; min: number; max: number; onChange: (value: number) => void }) {
   return (
     <div>
       <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[.12em] text-[#B2AAA7]">{label}</span>
       <div className="grid grid-cols-[42px_1fr_42px] border border-[#3C3A37] bg-[#080706]">
         <button type="button" onClick={() => onChange(value - 1)} disabled={value <= min} className="h-10 text-[#B2AAA7] transition-colors hover:bg-[#3C3A37] hover:text-white disabled:opacity-40">-</button>
-        <span className="flex h-10 items-center justify-center border-x border-[#3C3A37] font-heading text-sm font-bold text-white">{value}</span>
+        <span className="flex h-10 items-center justify-center border-x border-[#3C3A37] font-heading text-sm font-bold text-white">{value}{suffix ?? ""}</span>
         <button type="button" onClick={() => onChange(value + 1)} disabled={value >= max} className="h-10 text-[#B2AAA7] transition-colors hover:bg-[#3C3A37] hover:text-white disabled:opacity-40">+</button>
       </div>
     </div>

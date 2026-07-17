@@ -15,6 +15,7 @@ type ConfirmationState = {
   lastName: string;
   reservationDate: string;
   reservationTimeLabel: string;
+  durationMinutes: number;
   status: string;
   paymentMethodLabel: string | null;
   paymentMethod: {
@@ -30,6 +31,14 @@ function formatReservationDate(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   if (!year || !month || !day) return dateKey;
   return new Intl.DateTimeFormat("es-CO", { dateStyle: "full" }).format(new Date(year, month - 1, day));
+}
+
+function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) return `${hours} ${hours === 1 ? "hora" : "horas"} y ${mins} minutos`;
+  if (hours > 0) return `${hours} ${hours === 1 ? "hora" : "horas"}`;
+  return `${mins} minutos`;
 }
 
 export function ReservaContent() {
@@ -67,6 +76,7 @@ export function ReservaContent() {
         lastName: result.reservation.lastName,
         reservationDate: result.reservation.reservationDate,
         reservationTimeLabel: result.reservation.reservationTimeLabel,
+        durationMinutes: result.reservation.durationMinutes,
         status: result.reservation.status,
         paymentMethodLabel: result.reservation.paymentMethodLabel,
         paymentMethod: result.reservation.paymentMethod,
@@ -155,7 +165,7 @@ export function ReservaContent() {
                   Código: {confirmation.reservationCode}
                 </h1>
                 <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[#B2AAA7]">
-                  Tu reserva quedó registrada para <span className="font-semibold text-white">{formatReservationDate(confirmation.reservationDate)}</span> a las <span className="font-semibold text-white">{confirmation.reservationTimeLabel}</span>.
+                  Tu reserva quedó registrada para <span className="font-semibold text-white">{formatReservationDate(confirmation.reservationDate)}</span> a las <span className="font-semibold text-white">{confirmation.reservationTimeLabel}</span> por <span className="font-semibold text-white">{formatDuration(confirmation.durationMinutes)}</span>.
                 </p>
 
                 <div className="mt-6 grid gap-3 text-left sm:grid-cols-2">

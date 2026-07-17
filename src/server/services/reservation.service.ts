@@ -32,7 +32,7 @@ const BLOCKING_STATUSES: ReservationStatusInput[] = [
   "confirmed",
 ];
 
-const SLOT_MINUTES = 60;
+const SLOT_MINUTES = 30;
 
 type ReservationWithItems = Prisma.ReservationGetPayload<{
   include: { items: true; user: true };
@@ -67,6 +67,7 @@ function serializeReservation(reservation: ReservationWithItems) {
     reservationTime: reservation.reservationTime,
     reservationTimeLabel: getSlotLabel(reservation.reservationTime),
     durationHours: reservation.durationHours,
+    durationMinutes: reservation.durationMinutes,
     notes: reservation.notes ?? "",
     status: reservation.status,
     subtotal: reservation.subtotal,
@@ -85,6 +86,7 @@ function serializeReservation(reservation: ReservationWithItems) {
       unitPrice: item.unitPrice,
       quantity: item.quantity,
       hours: item.hours,
+      durationMinutes: item.durationMinutes,
       total: item.total,
     })),
     user: reservation.user
@@ -111,19 +113,20 @@ function minutesToTime(minutes: number) {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-function getOccupiedTimes(time: string, durationHours = 1) {
+function getOccupiedTimes(time: string, durationMinutes = 60) {
   const start = timeToMinutes(time);
-  return Array.from({ length: durationHours }, (_, index) => minutesToTime(start + index * SLOT_MINUTES));
+  const slots = Math.ceil(durationMinutes / SLOT_MINUTES);
+  return Array.from({ length: slots }, (_, index) => minutesToTime(start + index * SLOT_MINUTES));
 }
 
 function isTimeRangeWithinBusinessHours(
   time: string,
-  durationHours: number,
+  durationMinutes: number,
   businessHours: Awaited<ReturnType<typeof businessHoursService.getBusinessHourData>>,
 ) {
   if (!businessHours || !businessHours.isOpen) return false;
   const start = timeToMinutes(time);
-  const end = start + durationHours * SLOT_MINUTES;
+  const end = start + durationMinutes;
 
   return businessHours.slots.some((block) => {
     const open = timeToMinutes(block.openTime);
@@ -254,6 +257,7 @@ async function calculateTotals(
     const quantity = quantities.get(service.id) ?? 1;
     const hours = hoursByService.get(service.id) ?? 1;
     const unitPrice = Math.round(Number(service.finalPrice));
+    const durationMinutes = Math.max(30, service.durationMinutes || 60) * hours;
     return {
       serviceId: service.id,
       serviceTitle: service.name,
@@ -262,6 +266,7 @@ async function calculateTotals(
       unitPrice,
       quantity,
       hours,
+      durationMinutes,
       total: unitPrice * quantity * hours,
     };
   });
@@ -294,7 +299,7 @@ async function ensureSlotAvailable(
   tx: Prisma.TransactionClient,
   date: string,
   time: string,
-  durationHours: number,
+  durationMinutes: number,
   excludeReservationId?: string,
 ) {
   if (!isValidDateKey(date)) throw new Error("Fecha inválida");
@@ -305,7 +310,7 @@ async function ensureSlotAvailable(
   if (!businessHours || !businessHours.isOpen) {
     throw new Error("No hay disponibilidad para este día");
   }
-  if (!isTimeWithinBusinessHours(time, businessHours) || !isTimeRangeWithinBusinessHours(time, durationHours, businessHours)) {
+  if (!isTimeWithinBusinessHours(time, businessHours) || !isTimeRangeWithinBusinessHours(time, durationMinutes, businessHours)) {
     throw new Error("Hora inválida o fuera del horario de atención");
   }
 
@@ -315,14 +320,15 @@ async function ensureSlotAvailable(
       status: { in: BLOCKING_STATUSES },
       ...(excludeReservationId ? { id: { not: excludeReservationId } } : {}),
     },
-    select: { reservationTime: true, durationHours: true },
+    select: { reservationTime: true, durationHours: true, durationMinutes: true },
   });
 
   const requestedStart = timeToMinutes(time);
-  const requestedEnd = requestedStart + durationHours * SLOT_MINUTES;
+  const requestedEnd = requestedStart + durationMinutes;
   const overlapsReserved = reserved.some((reservation) => {
     const reservedStart = timeToMinutes(reservation.reservationTime);
-    const reservedEnd = reservedStart + reservation.durationHours * SLOT_MINUTES;
+    const reservedDuration = reservation.durationMinutes || reservation.durationHours * 60;
+    const reservedEnd = reservedStart + reservedDuration;
     return intervalsOverlap(requestedStart, requestedEnd, reservedStart, reservedEnd);
   });
 
@@ -330,12 +336,18 @@ async function ensureSlotAvailable(
 }
 
 async function generateReservationCode(tx: Prisma.TransactionClient) {
-  const count = await tx.reservation.count();
-  return `PG-${String(count + 1).padStart(6, "0")}`;
+  let next = (await tx.reservation.count()) + 1;
+
+  while (true) {
+    const code = `PG-${String(next).padStart(6, "0")}`;
+    const existing = await tx.reservation.findUnique({ where: { reservationCode: code } });
+    if (!existing) return code;
+    next += 1;
+  }
 }
 
 export const reservationService = {
-  async getAvailability(date: string, excludeReservationId?: string, durationHours = 1) {
+  async getAvailability(date: string, excludeReservationId?: string, durationMinutes = 60) {
     if (!isValidDateKey(date)) throw new Error("Fecha inválida");
 
     const reservations = await prisma.reservation.findMany({
@@ -344,23 +356,24 @@ export const reservationService = {
         status: { in: BLOCKING_STATUSES },
         ...(excludeReservationId ? { id: { not: excludeReservationId } } : {}),
       },
-      select: { reservationTime: true, durationHours: true },
+      select: { reservationTime: true, durationHours: true, durationMinutes: true },
     });
 
-    const reservedTimes = new Set(reservations.flatMap((reservation) => getOccupiedTimes(reservation.reservationTime, reservation.durationHours)));
+    const reservedTimes = new Set(reservations.flatMap((reservation) => getOccupiedTimes(reservation.reservationTime, reservation.durationMinutes || reservation.durationHours * 60)));
     const baseSlots = await businessHoursService.getAvailability(date, reservedTimes);
     const dayOfWeek = (await import("@/lib/timezone")).getDayOfWeek(date);
     const businessHours = await businessHoursService.getBusinessHourData(dayOfWeek);
     const slots = baseSlots.map((slot) => {
       if (!slot.available) return slot;
-      if (!isTimeRangeWithinBusinessHours(slot.time, durationHours, businessHours)) {
+      if (!isTimeRangeWithinBusinessHours(slot.time, durationMinutes, businessHours)) {
         return { ...slot, available: false, reason: "closed" as const };
       }
       const start = timeToMinutes(slot.time);
-      const end = start + durationHours * SLOT_MINUTES;
+      const end = start + durationMinutes;
       const overlapsReserved = reservations.some((reservation) => {
         const reservedStart = timeToMinutes(reservation.reservationTime);
-        const reservedEnd = reservedStart + reservation.durationHours * SLOT_MINUTES;
+        const reservedDuration = reservation.durationMinutes || reservation.durationHours * 60;
+        const reservedEnd = reservedStart + reservedDuration;
         return intervalsOverlap(start, end, reservedStart, reservedEnd);
       });
       if (overlapsReserved) return { ...slot, available: false, reason: "reserved" as const };
@@ -415,11 +428,12 @@ export const reservationService = {
 
   async create(input: PublicReservationInput | DashboardReservationInput) {
     return prisma.$transaction(async (tx) => {
-      const durationHours = Math.max(1, input.items.reduce((sum, item) => sum + (item.hours ?? 1), 0));
-      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationHours);
       const user = await resolveUser(tx, input);
       const paymentMethodLabel = await resolvePaymentMethod(tx, input, !("status" in input));
       const totals = await calculateTotals(tx, input);
+      const durationMinutes = Math.max(30, totals.items.reduce((sum, item) => sum + item.durationMinutes, 0));
+      const durationHours = Math.max(1, Math.ceil(durationMinutes / 60));
+      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationMinutes);
       const reservationCode = await generateReservationCode(tx);
       const status = "status" in input ? input.status : "pending";
 
@@ -440,6 +454,7 @@ export const reservationService = {
           reservationDate: dateKeyToDate(input.reservationDate),
           reservationTime: input.reservationTime,
           durationHours,
+          durationMinutes,
           notes: input.scheduleNotes?.trim() || null,
           status,
           subtotal: totals.subtotal,
@@ -468,11 +483,12 @@ export const reservationService = {
       const existing = await tx.reservation.findUnique({ where: { id } });
       if (!existing) throw new Error("Reserva no encontrada");
 
-      const durationHours = Math.max(1, input.items.reduce((sum, item) => sum + (item.hours ?? 1), 0));
-      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationHours, id);
       const user = await resolveUser(tx, input);
       const paymentMethodLabel = await resolvePaymentMethod(tx, input, false);
       const totals = await calculateTotals(tx, input);
+      const durationMinutes = Math.max(30, totals.items.reduce((sum, item) => sum + item.durationMinutes, 0));
+      const durationHours = Math.max(1, Math.ceil(durationMinutes / 60));
+      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationMinutes, id);
 
       await tx.reservationItem.deleteMany({ where: { reservationId: id } });
       const reservation = await tx.reservation.update({
@@ -492,6 +508,7 @@ export const reservationService = {
           reservationDate: dateKeyToDate(input.reservationDate),
           reservationTime: input.reservationTime,
           durationHours,
+          durationMinutes,
           notes: input.scheduleNotes?.trim() || null,
           status: input.status,
           subtotal: totals.subtotal,

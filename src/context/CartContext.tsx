@@ -88,7 +88,7 @@ function saveCoupon(coupon: CouponState | null) {
 }
 
 function normalizeItems(items: CartItem[]) {
-  return items.map((item) => ({ ...item, quantity: item.quantity || 1, hours: item.hours || 1 }));
+  return items.map((item) => ({ ...item, durationMinutes: item.durationMinutes || 60, quantity: item.quantity || 1, hours: item.hours || 1 }));
 }
 
 function getNextItems(items: CartItem[], item: Omit<CartItem, "quantity" | "hours">) {
