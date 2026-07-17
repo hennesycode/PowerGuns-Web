@@ -56,7 +56,8 @@ export async function PUT(
     const statusChanged = existing && existing.status !== reservation.status;
     const scheduleChanged = existing && (
       existing.reservationDate !== reservation.reservationDate ||
-      existing.reservationTime !== reservation.reservationTime
+      existing.reservationTime !== reservation.reservationTime ||
+      existing.durationHours !== reservation.durationHours
     );
     const action = statusChanged ? "reservation_status_changed" : "reservation_updated";
 

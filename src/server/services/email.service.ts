@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import path from "node:path";
 import { CONTACT, POLYGON_ADDRESS, SITE } from "@/lib/constants";
+import { companySettingsService } from "@/server/services/company-settings.service";
 
 type ReservationEmailData = {
   id: string;
@@ -15,6 +16,7 @@ type ReservationEmailData = {
   department: string;
   reservationDate: string;
   reservationTimeLabel: string;
+  durationHours: number;
   status: string;
   subtotal: number;
   discount: number;
@@ -61,6 +63,17 @@ function getAdminEmails() {
     .split(",")
     .map((email) => email.trim())
     .filter(Boolean);
+}
+
+async function getReservationNotificationEmails() {
+  try {
+    const company = await companySettingsService.get();
+    if (company.companyEmail) return [company.companyEmail];
+  } catch (error) {
+    console.error("[EmailService:company-email]", error);
+  }
+
+  return getAdminEmails();
 }
 
 function getTransporter() {
@@ -160,6 +173,7 @@ function buildReservationEmail(reservation: ReservationEmailData, variant: "cust
                   ${detailRow("Teléfono", reservation.phone)}
                   ${detailRow("Fecha", formatReservationDate(reservation.reservationDate))}
                   ${detailRow("Hora", reservation.reservationTimeLabel)}
+                  ${detailRow("Duración", `${reservation.durationHours} ${reservation.durationHours === 1 ? "hora" : "horas"}`)}
                   ${detailRow("Estado", STATUS_LABELS[reservation.status] ?? reservation.status)}
                   ${detailRow("Método de pago", reservation.paymentMethodLabel || "No registrado")}
                 </table>
@@ -195,6 +209,7 @@ function buildReservationEmail(reservation: ReservationEmailData, variant: "cust
     `Cliente: ${customerName}`,
     `Fecha: ${formatReservationDate(reservation.reservationDate)}`,
     `Hora: ${reservation.reservationTimeLabel}`,
+    `Duración: ${reservation.durationHours} ${reservation.durationHours === 1 ? "hora" : "horas"}`,
     `Servicios: ${reservation.services.map((item) => `${item.serviceTitle} x ${item.quantity}`).join(", ")}`,
     `Total: ${formatCOP(reservation.total)}`,
     `Ubicación: ${POLYGON_ADDRESS}`,
@@ -300,8 +315,8 @@ export const emailService = {
   },
 
   async sendReservationAdminNotification(reservation: ReservationEmailData): Promise<SendResult> {
-    const admins = getAdminEmails();
-    if (admins.length === 0) return { success: false, error: "No hay correos administradores configurados" };
+    const admins = await getReservationNotificationEmails();
+    if (admins.length === 0) return { success: false, error: "No hay correo de empresa configurado" };
 
     const email = buildReservationEmail(reservation, "admin");
     return sendMail({

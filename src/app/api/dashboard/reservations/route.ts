@@ -51,8 +51,12 @@ export async function POST(request: Request) {
     }
 
     const reservation = await reservationService.create(validation.data);
-    const emailResult = await emailService.sendReservationConfirmation(reservation);
-    if (!emailResult.success) console.error("[ReservationEmail:manual-create]", emailResult.error);
+    const [customerEmail, companyEmail] = await Promise.all([
+      emailService.sendReservationConfirmation(reservation),
+      emailService.sendReservationAdminNotification(reservation),
+    ]);
+    if (!customerEmail.success) console.error("[ReservationEmail:manual-create:customer]", customerEmail.error);
+    if (!companyEmail.success) console.error("[ReservationEmail:manual-create:company]", companyEmail.error);
 
     activityService.logFromSession(auth.session, {
       action: "reservation_created",

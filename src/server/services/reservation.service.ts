@@ -32,6 +32,8 @@ const BLOCKING_STATUSES: ReservationStatusInput[] = [
   "confirmed",
 ];
 
+const SLOT_MINUTES = 60;
+
 type ReservationWithItems = Prisma.ReservationGetPayload<{
   include: { items: true; user: true };
 }>;
@@ -64,6 +66,7 @@ function serializeReservation(reservation: ReservationWithItems) {
     reservationDate: date,
     reservationTime: reservation.reservationTime,
     reservationTimeLabel: getSlotLabel(reservation.reservationTime),
+    durationHours: reservation.durationHours,
     notes: reservation.notes ?? "",
     status: reservation.status,
     subtotal: reservation.subtotal,
@@ -94,6 +97,42 @@ function serializeReservation(reservation: ReservationWithItems) {
         }
       : null,
   };
+}
+
+function timeToMinutes(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+function minutesToTime(minutes: number) {
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function getOccupiedTimes(time: string, durationHours = 1) {
+  const start = timeToMinutes(time);
+  return Array.from({ length: durationHours }, (_, index) => minutesToTime(start + index * SLOT_MINUTES));
+}
+
+function isTimeRangeWithinBusinessHours(
+  time: string,
+  durationHours: number,
+  businessHours: Awaited<ReturnType<typeof businessHoursService.getBusinessHourData>>,
+) {
+  if (!businessHours || !businessHours.isOpen) return false;
+  const start = timeToMinutes(time);
+  const end = start + durationHours * SLOT_MINUTES;
+
+  return businessHours.slots.some((block) => {
+    const open = timeToMinutes(block.openTime);
+    const close = timeToMinutes(block.closeTime);
+    return start >= open && end <= close;
+  });
+}
+
+function intervalsOverlap(startA: number, endA: number, startB: number, endB: number) {
+  return startA < endB && startB < endA;
 }
 
 async function generateUsername(tx: Prisma.TransactionClient, email: string, identificationNumber: string) {
@@ -250,6 +289,7 @@ async function ensureSlotAvailable(
   tx: Prisma.TransactionClient,
   date: string,
   time: string,
+  durationHours: number,
   excludeReservationId?: string,
 ) {
   if (!isValidDateKey(date)) throw new Error("Fecha inválida");
@@ -260,20 +300,28 @@ async function ensureSlotAvailable(
   if (!businessHours || !businessHours.isOpen) {
     throw new Error("No hay disponibilidad para este día");
   }
-  if (!isTimeWithinBusinessHours(time, businessHours)) {
+  if (!isTimeWithinBusinessHours(time, businessHours) || !isTimeRangeWithinBusinessHours(time, durationHours, businessHours)) {
     throw new Error("Hora inválida o fuera del horario de atención");
   }
 
-  const reserved = await tx.reservation.findFirst({
+  const reserved = await tx.reservation.findMany({
     where: {
       reservationDate: dateKeyToDate(date),
-      reservationTime: time,
       status: { in: BLOCKING_STATUSES },
       ...(excludeReservationId ? { id: { not: excludeReservationId } } : {}),
     },
+    select: { reservationTime: true, durationHours: true },
   });
 
-  if (reserved) throw new Error("Ese horario ya no está disponible");
+  const requestedStart = timeToMinutes(time);
+  const requestedEnd = requestedStart + durationHours * SLOT_MINUTES;
+  const overlapsReserved = reserved.some((reservation) => {
+    const reservedStart = timeToMinutes(reservation.reservationTime);
+    const reservedEnd = reservedStart + reservation.durationHours * SLOT_MINUTES;
+    return intervalsOverlap(requestedStart, requestedEnd, reservedStart, reservedEnd);
+  });
+
+  if (overlapsReserved) throw new Error("Ese horario ya no está disponible para la duración seleccionada");
 }
 
 async function generateReservationCode(tx: Prisma.TransactionClient) {
@@ -282,7 +330,7 @@ async function generateReservationCode(tx: Prisma.TransactionClient) {
 }
 
 export const reservationService = {
-  async getAvailability(date: string, excludeReservationId?: string) {
+  async getAvailability(date: string, excludeReservationId?: string, durationHours = 1) {
     if (!isValidDateKey(date)) throw new Error("Fecha inválida");
 
     const reservations = await prisma.reservation.findMany({
@@ -291,15 +339,30 @@ export const reservationService = {
         status: { in: BLOCKING_STATUSES },
         ...(excludeReservationId ? { id: { not: excludeReservationId } } : {}),
       },
-      select: { reservationTime: true },
+      select: { reservationTime: true, durationHours: true },
     });
 
-    const reservedTimes = new Set(reservations.map((reservation) => reservation.reservationTime));
-    const slots = await businessHoursService.getAvailability(date, reservedTimes);
+    const reservedTimes = new Set(reservations.flatMap((reservation) => getOccupiedTimes(reservation.reservationTime, reservation.durationHours)));
+    const baseSlots = await businessHoursService.getAvailability(date, reservedTimes);
+    const dayOfWeek = (await import("@/lib/timezone")).getDayOfWeek(date);
+    const businessHours = await businessHoursService.getBusinessHourData(dayOfWeek);
+    const slots = baseSlots.map((slot) => {
+      if (!slot.available) return slot;
+      if (!isTimeRangeWithinBusinessHours(slot.time, durationHours, businessHours)) {
+        return { ...slot, available: false, reason: "closed" as const };
+      }
+      const start = timeToMinutes(slot.time);
+      const end = start + durationHours * SLOT_MINUTES;
+      const overlapsReserved = reservations.some((reservation) => {
+        const reservedStart = timeToMinutes(reservation.reservationTime);
+        const reservedEnd = reservedStart + reservation.durationHours * SLOT_MINUTES;
+        return intervalsOverlap(start, end, reservedStart, reservedEnd);
+      });
+      if (overlapsReserved) return { ...slot, available: false, reason: "reserved" as const };
+      return slot;
+    });
 
     if (slots.length === 0) {
-      const dayOfWeek = (await import("@/lib/timezone")).getDayOfWeek(date);
-      const businessHours = await businessHoursService.getBusinessHourData(dayOfWeek);
       if (!businessHours || !businessHours.isOpen) {
         return { date, slots: [], closed: true };
       }
@@ -347,7 +410,8 @@ export const reservationService = {
 
   async create(input: PublicReservationInput | DashboardReservationInput) {
     return prisma.$transaction(async (tx) => {
-      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime);
+      const durationHours = input.durationHours ?? 1;
+      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationHours);
       const user = await resolveUser(tx, input);
       const paymentMethodLabel = await resolvePaymentMethod(tx, input, !("status" in input));
       const totals = await calculateTotals(tx, input);
@@ -370,6 +434,7 @@ export const reservationService = {
           city: input.city,
           reservationDate: dateKeyToDate(input.reservationDate),
           reservationTime: input.reservationTime,
+          durationHours,
           notes: input.scheduleNotes?.trim() || null,
           status,
           subtotal: totals.subtotal,
@@ -398,7 +463,8 @@ export const reservationService = {
       const existing = await tx.reservation.findUnique({ where: { id } });
       if (!existing) throw new Error("Reserva no encontrada");
 
-      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, id);
+      const durationHours = input.durationHours ?? 1;
+      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationHours, id);
       const user = await resolveUser(tx, input);
       const paymentMethodLabel = await resolvePaymentMethod(tx, input, false);
       const totals = await calculateTotals(tx, input);
@@ -420,6 +486,7 @@ export const reservationService = {
           city: input.city,
           reservationDate: dateKeyToDate(input.reservationDate),
           reservationTime: input.reservationTime,
+          durationHours,
           notes: input.scheduleNotes?.trim() || null,
           status: input.status,
           subtotal: totals.subtotal,

@@ -46,6 +46,7 @@ export const reservationScheduleSchema = z.object({
     .min(1, "Selecciona una fecha")
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida"),
   reservationTime: z.string().min(1, "Selecciona una hora"),
+  durationHours: z.coerce.number().int().min(1, "Duración mínima 1 hora").max(8, "Duración máxima 8 horas").default(1),
   scheduleNotes: z.string().max(500, "Máximo 500 caracteres").optional(),
 });
 

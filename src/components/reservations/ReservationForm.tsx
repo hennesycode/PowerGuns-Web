@@ -64,6 +64,7 @@ const emptyForm: ReservationFormData = {
   city: "",
   reservationDate: "",
   reservationTime: "",
+  durationHours: 1,
   scheduleNotes: "",
   paymentMethodId: null,
 };
@@ -146,6 +147,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
         (Object.keys(emptyForm) as FormField[]).forEach((key) => {
           if (typeof parsed[key] === "string") restored[key] = parsed[key] as never;
         });
+        restored.durationHours = 1;
         // Draft hydration must read localStorage after mount to avoid SSR access.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setForm(restored);
@@ -221,7 +223,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
 
     let cancelled = false;
     setAvailabilityLoading(true);
-    fetch(`/api/public/availability?date=${form.reservationDate}`)
+    fetch(`/api/public/availability?date=${form.reservationDate}&durationHours=${form.durationHours}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Error al consultar disponibilidad");
@@ -248,7 +250,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [form.reservationDate, form.reservationTime]);
+  }, [form.durationHours, form.reservationDate, form.reservationTime]);
 
   const clearError = (field: string) => {
     setErrors((prev) => {

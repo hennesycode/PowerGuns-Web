@@ -27,6 +27,7 @@ type Reservation = {
   reservationDate: string;
   reservationTime: string;
   reservationTimeLabel: string;
+  durationHours: number;
   notes: string;
   status: ReservationStatus;
   subtotal: number;
@@ -93,6 +94,7 @@ type FormState = {
   city: string;
   reservationDate: string;
   reservationTime: string;
+  durationHours: number;
   scheduleNotes: string;
   couponCode: string;
   status: ReservationStatus;
@@ -131,6 +133,7 @@ const emptyForm: FormState = {
   city: "",
   reservationDate: "",
   reservationTime: "",
+  durationHours: 1,
   scheduleNotes: "",
   couponCode: "",
   status: "pending",
@@ -151,26 +154,6 @@ function dateToKey(date: Date) {
 function dateKeyToLocalDate(key: string) {
   const [year, month, day] = key.split("-").map(Number);
   return new Date(year, month - 1, day);
-}
-
-function getMonthRange(date: Date, monthOffset = 0) {
-  const start = new Date(date.getFullYear(), date.getMonth() + monthOffset, 1);
-  const end = new Date(date.getFullYear(), date.getMonth() + monthOffset + 1, 1);
-  return { startKey: dateToKey(start), endKey: dateToKey(end) };
-}
-
-function isDateKeyInRange(dateKey: string, startKey: string, endKey: string) {
-  return dateKey >= startKey && dateKey < endKey;
-}
-
-function formatDelta(current: number, previous: number, formatter: (value: number) => string = String) {
-  const diff = current - previous;
-  const sign = diff > 0 ? "+" : diff < 0 ? "-" : "";
-  return {
-    text: `${sign}${formatter(Math.abs(diff))} vs mes pasado`,
-    positive: diff > 0,
-    negative: diff < 0,
-  };
 }
 
 function buildCalendarDays(monthDate: Date): CalendarDay[] {
@@ -198,6 +181,31 @@ function phoneToNational(phone: string) {
   return phone.replace(/\D/g, "").replace(/^57/, "").slice(0, 10);
 }
 
+function timeToMinutes(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+function minutesToTime(minutes: number) {
+  const normalized = minutes % (24 * 60);
+  const hour = Math.floor(normalized / 60);
+  const minute = normalized % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function getEndTimeLabel(time: string, durationHours: number) {
+  if (!time) return "Selecciona una hora";
+  return getSlotLabel(minutesToTime(timeToMinutes(time) + durationHours * 60));
+}
+
+function getSlotLabel(time: string) {
+  const hour = Number(time.split(":")[0]);
+  const minute = time.split(":")[1];
+  const period = hour >= 12 ? "PM" : "AM";
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${h12}:${minute} ${period}`;
+}
+
 function reservationToForm(reservation: Reservation): FormState {
   return {
     userId: reservation.userId,
@@ -212,6 +220,7 @@ function reservationToForm(reservation: Reservation): FormState {
     city: reservation.city,
     reservationDate: reservation.reservationDate,
     reservationTime: reservation.reservationTime,
+    durationHours: reservation.durationHours,
     scheduleNotes: reservation.notes,
     couponCode: reservation.couponCode ?? "",
     status: reservation.status,
@@ -221,7 +230,6 @@ function reservationToForm(reservation: Reservation): FormState {
 
 export default function ReservasDashboardPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [metricReservations, setMetricReservations] = useState<Reservation[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -242,13 +250,6 @@ export default function ReservasDashboardPage() {
     setReservations(data.reservations ?? []);
   }, [date, query, status]);
 
-  const refreshMetricReservations = useCallback(async () => {
-    const res = await fetch("/api/dashboard/reservations");
-    if (!res.ok) throw new Error("No se pudieron cargar métricas de reservas");
-    const data = await res.json();
-    setMetricReservations(data.reservations ?? []);
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -258,7 +259,6 @@ export default function ReservasDashboardPage() {
       .then(([reservationData, serviceData]) => {
         if (cancelled) return;
         setReservations(reservationData.reservations ?? []);
-        setMetricReservations(reservationData.reservations ?? []);
         setServices(serviceData.services ?? []);
       })
       .catch(() => toast.error("No se pudo cargar el módulo de reservas"))
@@ -276,30 +276,6 @@ export default function ReservasDashboardPage() {
     }, 250);
     return () => window.clearTimeout(timeout);
   }, [refreshReservations]);
-
-  const totals = useMemo(() => {
-    const currentMonth = getMonthRange(new Date());
-    const previousMonth = getMonthRange(new Date(), -1);
-    const currentReservations = metricReservations.filter((reservation) => isDateKeyInRange(reservation.reservationDate, currentMonth.startKey, currentMonth.endKey));
-    const previousReservations = metricReservations.filter((reservation) => isDateKeyInRange(reservation.reservationDate, previousMonth.startKey, previousMonth.endKey));
-    const current = {
-      pending: currentReservations.filter((reservation) => reservation.status === "pending").length,
-      confirmed: currentReservations.filter((reservation) => reservation.status === "confirmed").length,
-      revenue: currentReservations.reduce((sum, reservation) => sum + reservation.total, 0),
-    };
-    const previous = {
-      pending: previousReservations.filter((reservation) => reservation.status === "pending").length,
-      confirmed: previousReservations.filter((reservation) => reservation.status === "confirmed").length,
-      revenue: previousReservations.reduce((sum, reservation) => sum + reservation.total, 0),
-    };
-
-    return {
-      ...current,
-      pendingDelta: formatDelta(current.pending, previous.pending),
-      confirmedDelta: formatDelta(current.confirmed, previous.confirmed),
-      revenueDelta: formatDelta(current.revenue, previous.revenue, formatCOP),
-    };
-  }, [metricReservations]);
 
   const reservationsByDate = useMemo(() => {
     const grouped = new Map<string, Reservation[]>();
@@ -325,7 +301,6 @@ export default function ReservasDashboardPage() {
       toast.success("Reserva eliminada correctamente");
       setDeleting(null);
       await refreshReservations();
-      await refreshMetricReservations();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo eliminar la reserva");
     }
@@ -334,12 +309,6 @@ export default function ReservasDashboardPage() {
   return (
     <AdminLayout title="Reservas">
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard label="Pendientes este mes" value={String(totals.pending)} trend={totals.pendingDelta} />
-          <MetricCard label="Confirmadas este mes" value={String(totals.confirmed)} trend={totals.confirmedDelta} />
-          <MetricCard label="Valor listado este mes" value={formatCOP(totals.revenue)} trend={totals.revenueDelta} />
-        </div>
-
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="font-['Rajdhani',sans-serif] text-sm text-[#B2AAA7]">
@@ -407,7 +376,6 @@ export default function ReservasDashboardPage() {
             setFormOpen(false);
             setEditing(null);
             await refreshReservations();
-            await refreshMetricReservations();
           }}
         />
       )}
@@ -423,7 +391,6 @@ export default function ReservasDashboardPage() {
           onUpdated={async (reservation) => {
             setViewing(reservation);
             await refreshReservations();
-            await refreshMetricReservations();
           }}
         />
       )}
@@ -436,20 +403,6 @@ export default function ReservasDashboardPage() {
         />
       )}
     </AdminLayout>
-  );
-}
-
-function MetricCard({ label, value, trend }: { label: string; value: string; trend?: { text: string; positive: boolean; negative: boolean } }) {
-  return (
-    <div className="border border-[#c4871a]/12 bg-[#171513] p-5">
-      <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#5B5A59]">{label}</p>
-      <p className="mt-2 font-heading text-2xl font-bold uppercase text-white">{value}</p>
-      {trend && (
-        <p className={`mt-2 text-xs font-semibold ${trend.positive ? "text-green-400" : trend.negative ? "text-[#ff8174]" : "text-[#B2AAA7]"}`}>
-          {trend.text}
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -510,7 +463,7 @@ function ReservationsCalendar({ month, days, reservationsByDate, onMonthChange, 
                       </div>
                       <p className="mt-1 truncate font-heading text-xs font-bold uppercase text-white">{reservation.firstName} {reservation.lastName}</p>
                       <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#B2AAA7]">
-                        <span>{reservation.reservationTimeLabel}</span>
+                        <span>{reservation.reservationTimeLabel} · {reservation.durationHours} h</span>
                         <span className="truncate text-[#5B5A59]">{reservation.services.length} serv.</span>
                       </div>
                     </button>
@@ -539,7 +492,7 @@ function ReservationsTable({ reservations, onView, onEdit, onDelete }: {
         <table className="w-full min-w-[1120px] text-left text-sm">
           <thead className="bg-[#080706] text-[10px] uppercase tracking-[.12em] text-[#5B5A59]">
             <tr>
-              {['Código', 'Cliente', 'Identificación', 'Correo', 'Teléfono', 'Fecha', 'Hora', 'Servicios', 'Total', 'Estado', 'Creada', 'Acciones'].map((head) => <th key={head} className="px-4 py-3 font-semibold">{head}</th>)}
+              {['Código', 'Cliente', 'Identificación', 'Correo', 'Teléfono', 'Fecha', 'Hora', 'Duración', 'Servicios', 'Total', 'Estado', 'Creada', 'Acciones'].map((head) => <th key={head} className="px-4 py-3 font-semibold">{head}</th>)}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#c4871a]/8">
@@ -552,6 +505,7 @@ function ReservationsTable({ reservations, onView, onEdit, onDelete }: {
                 <td className="px-4 py-4">{reservation.phone}</td>
                 <td className="px-4 py-4">{reservation.reservationDate}</td>
                 <td className="px-4 py-4">{reservation.reservationTimeLabel}</td>
+                <td className="px-4 py-4">{reservation.durationHours} h</td>
                 <td className="px-4 py-4">{reservation.services.map((item) => item.serviceTitle).join(', ')}</td>
                 <td className="px-4 py-4 font-semibold text-white">{formatCOP(reservation.total)}</td>
                 <td className="px-4 py-4"><StatusBadge status={reservation.status} /></td>
@@ -574,7 +528,7 @@ function ReservationsTable({ reservations, onView, onEdit, onDelete }: {
               <StatusBadge status={reservation.status} />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[#B2AAA7]">
-              <span>{reservation.reservationDate}</span><span>{reservation.reservationTimeLabel}</span>
+              <span>{reservation.reservationDate}</span><span>{reservation.reservationTimeLabel} · {reservation.durationHours} h</span>
               <span>{reservation.identificationNumber}</span><span>{formatCOP(reservation.total)}</span>
             </div>
             <div className="mt-4"><ActionButtons reservation={reservation} onView={onView} onEdit={onEdit} onDelete={onDelete} /></div>
@@ -635,13 +589,13 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
       setAvailability([]);
       return;
     }
-    const params = new URLSearchParams({ date: form.reservationDate });
+    const params = new URLSearchParams({ date: form.reservationDate, durationHours: String(form.durationHours) });
     if (reservation) params.set("excludeReservationId", reservation.id);
     fetch(`/api/public/availability?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => setAvailability(data.slots ?? []))
       .catch(() => setAvailability([]));
-  }, [form.reservationDate, reservation]);
+  }, [form.durationHours, form.reservationDate, reservation]);
 
   const selectedServices = form.items
     .map((item) => ({ item, service: services.find((service) => service.id === item.serviceId) }))
@@ -735,6 +689,7 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
               <Field label="Departamento"><SearchableSelect options={colombiaDepartments.map((d) => d.name)} value={form.department} onChange={(value) => setForm((prev) => ({ ...prev, department: value, city: "" }))} label="Departamento" /></Field>
               <Field label="Ciudad"><SearchableSelect options={cities} value={form.city} onChange={(value) => setField("city", value)} disabled={!form.department} label="Ciudad" /></Field>
               <Field label="Fecha"><input type="date" value={form.reservationDate} onChange={(e) => setForm((prev) => ({ ...prev, reservationDate: e.target.value, reservationTime: "" }))} className="input-admin" /></Field>
+              <Field label="Horas a ocupar"><select value={form.durationHours} onChange={(e) => setForm((prev) => ({ ...prev, durationHours: Number(e.target.value), reservationTime: "" }))} className="input-admin">{[1, 2, 3, 4, 5, 6, 7, 8].map((hours) => <option key={hours} value={hours}>{hours} {hours === 1 ? "hora" : "horas"}</option>)}</select></Field>
               <Field label="Hora"><select value={form.reservationTime} onChange={(e) => setField("reservationTime", e.target.value)} className="input-admin"><option value="">Seleccionar hora</option>{(availability.length ? availability : BASE_RESERVATION_SLOTS.map((slot) => ({ ...slot, available: false, reason: null }))).map((slot) => <option key={slot.time} value={slot.time} disabled={!slot.available && slot.time !== reservation?.reservationTime}>{slot.label}{!slot.available ? ` · ${slot.reason ?? 'no disponible'}` : ''}</option>)}</select></Field>
               <Field label="Estado"><select value={form.status} onChange={(e) => setField("status", e.target.value as ReservationStatus)} className="input-admin">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
               <Field label="Cupón"><input value={form.couponCode} onChange={(e) => setField("couponCode", e.target.value.toUpperCase())} className="input-admin" placeholder="POWER10" /></Field>
@@ -763,6 +718,8 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
             <h3 className="font-heading text-base font-bold uppercase text-white">Resumen</h3>
             <div className="mt-4 space-y-2 text-sm text-[#B2AAA7]">
               <div className="flex justify-between"><span>Servicios</span><span>{form.items.length}</span></div>
+              <div className="flex justify-between"><span>Duración</span><span>{form.durationHours} {form.durationHours === 1 ? "hora" : "horas"}</span></div>
+              <div className="flex justify-between"><span>Horario ocupado</span><span>{form.reservationTime ? `${getSlotLabel(form.reservationTime)} - ${getEndTimeLabel(form.reservationTime, form.durationHours)}` : "Pendiente"}</span></div>
               <div className="flex justify-between"><span>Subtotal</span><span>{formatCOP(subtotal)}</span></div>
               <div className="flex justify-between border-t border-[#c4871a]/10 pt-2 font-heading text-lg font-bold uppercase text-white"><span>Total estimado</span><span className="text-[#c4871a]">{formatCOP(subtotal)}</span></div>
               <p className="pt-2 text-xs text-[#5B5A59]">El backend recalcula cupón, descuento y total antes de guardar.</p>
@@ -839,7 +796,7 @@ function ReservationDetailModal({ reservation, onClose, onDelete, onUpdated }: {
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <InfoBox title="Cliente" lines={[`${reservation.firstName} ${reservation.lastName}`, reservation.identificationNumber, reservation.email, reservation.phone]} />
-          <InfoBox title="Fecha y estado" lines={[reservation.reservationDate, reservation.reservationTimeLabel, statusLabels[reservation.status]]} />
+          <InfoBox title="Fecha y estado" lines={[reservation.reservationDate, `${reservation.reservationTimeLabel} - ${getEndTimeLabel(reservation.reservationTime, reservation.durationHours)}`, `${reservation.durationHours} ${reservation.durationHours === 1 ? "hora" : "horas"} ocupadas`, statusLabels[reservation.status]]} />
           <InfoBox title="Ubicación" lines={[reservation.address, `${reservation.city}, ${reservation.department}`, reservation.country]} />
           <InfoBox title="Método de pago" lines={[reservation.paymentMethodLabel || "No registrado"]} />
           <InfoBox title="Notas" lines={[reservation.notes || "Sin notas"]} />
