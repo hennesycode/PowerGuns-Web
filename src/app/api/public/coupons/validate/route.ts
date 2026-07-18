@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { couponService } from "@/server/services/coupon.service";
 
 export async function POST(request: Request) {
   try {
@@ -12,66 +12,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const coupon = await prisma.coupon.findUnique({
-      where: { code: code.trim().toUpperCase() },
-    });
-
-    if (!coupon) {
-      return NextResponse.json(
-        { valid: false, discountAmount: 0, message: "Cupón inválido o expirado" },
-      );
-    }
-
-    if (!coupon.isActive) {
-      return NextResponse.json(
-        { valid: false, discountAmount: 0, message: "Cupón no disponible actualmente" },
-      );
-    }
-
-    const now = new Date();
-    if (coupon.startsAt && now < coupon.startsAt) {
-      return NextResponse.json(
-        { valid: false, discountAmount: 0, message: "Este cupón aún no está vigente" },
-      );
-    }
-    if (coupon.expiresAt && now > coupon.expiresAt) {
-      return NextResponse.json(
-        { valid: false, discountAmount: 0, message: "Este cupón ha expirado" },
-      );
-    }
-
-    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-      return NextResponse.json(
-        { valid: false, discountAmount: 0, message: "Cupón agotado" },
-      );
-    }
-
     const numericSubtotal = Number(subtotal);
-    if (isNaN(numericSubtotal) || numericSubtotal < coupon.minimumSubtotal) {
-      return NextResponse.json(
-        {
-          valid: false,
-          discountAmount: 0,
-          message: `Compra mínima de ${new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(coupon.minimumSubtotal)} para usar este cupón`,
-        },
-      );
-    }
+    if (isNaN(numericSubtotal)) return NextResponse.json({ valid: false, discountAmount: 0, message: "Subtotal inválido" });
 
-    let discountAmount = 0;
-    if (coupon.discountType === "percentage") {
-      discountAmount = Math.round(numericSubtotal * (coupon.discountValue / 100));
-    } else {
-      discountAmount = Math.min(coupon.discountValue, numericSubtotal);
-    }
-    discountAmount = Math.max(0, Math.min(discountAmount, numericSubtotal));
+    const result = await couponService.validate(code, numericSubtotal, null, { skipCustomerRules: true });
+    if (!result.valid) return NextResponse.json({ valid: false, discountAmount: 0, message: result.message });
 
     return NextResponse.json({
       valid: true,
-      code: coupon.code,
-      discountType: coupon.discountType,
-      discountValue: coupon.discountValue,
-      discountAmount,
-      message: "Cupón aplicado correctamente",
+      code: result.code,
+      discountType: result.discountType,
+      discountValue: result.discountValue,
+      discountAmount: result.discountAmount,
+      message: result.message,
     });
   } catch (error) {
     console.error("[POST /api/public/coupons/validate]", error);

@@ -42,6 +42,19 @@ const navItems = [
     ),
   },
   {
+    label: "Cupones",
+    href: "/dashboard/cupones",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5">
+        <path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2v-7" />
+        <path d="M2 7h20v5H2z" />
+        <path d="M12 22V7" />
+        <path d="M12 7H7.5A2.5 2.5 0 1110 4.5C10 6 12 7 12 7z" />
+        <path d="M12 7h4.5A2.5 2.5 0 1014 4.5C14 6 12 7 12 7z" />
+      </svg>
+    ),
+  },
+  {
     label: "Inventario",
     href: "/dashboard/inventario",
     icon: (

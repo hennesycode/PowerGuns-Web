@@ -10,6 +10,7 @@ import {
   isTimeWithinBusinessHours,
 } from "@/lib/timezone";
 import { businessHoursService } from "@/server/services/business-hours.service";
+import { couponService } from "@/server/services/coupon.service";
 import type {
   DashboardReservationInput,
   PublicReservationInput,
@@ -236,6 +237,7 @@ async function resolvePaymentMethod(
 async function calculateTotals(
   tx: Prisma.TransactionClient,
   input: PublicReservationInput | DashboardReservationInput | UpdateReservationInput,
+  user?: { id: number; firstName: string; lastName: string; email: string } | null,
 ) {
   const quantities = new Map<number, number>();
   const hoursByService = new Map<number, number>();
@@ -274,25 +276,18 @@ async function calculateTotals(
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
   let discount = 0;
   let couponCode: string | null = null;
+  let couponId: string | null = null;
 
   const requestedCoupon = input.couponCode?.trim().toUpperCase();
   if (requestedCoupon) {
-    const coupon = await tx.coupon.findUnique({ where: { code: requestedCoupon } });
-    const now = new Date();
-    if (!coupon || !coupon.isActive) throw new Error("Cupón inválido o expirado");
-    if (coupon.startsAt && now < coupon.startsAt) throw new Error("Este cupón aún no está vigente");
-    if (coupon.expiresAt && now > coupon.expiresAt) throw new Error("Este cupón ha expirado");
-    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) throw new Error("Cupón agotado");
-    if (subtotal < coupon.minimumSubtotal) throw new Error("El subtotal no alcanza el mínimo del cupón");
-
-    discount = coupon.discountType === "percentage"
-      ? Math.round(subtotal * (coupon.discountValue / 100))
-      : Math.min(coupon.discountValue, subtotal);
-    discount = Math.max(0, Math.min(discount, subtotal));
-    couponCode = coupon.code;
+    const result = await couponService.validate(requestedCoupon, subtotal, user ?? null);
+    if (!result.valid) throw new Error(result.message);
+    discount = result.discountAmount;
+    couponCode = result.code;
+    couponId = result.coupon.id;
   }
 
-  return { items, subtotal, discount, total: subtotal - discount, couponCode };
+  return { items, subtotal, discount, total: subtotal - discount, couponCode, couponId };
 }
 
 async function ensureSlotAvailable(
@@ -430,7 +425,7 @@ export const reservationService = {
     return prisma.$transaction(async (tx) => {
       const user = await resolveUser(tx, input);
       const paymentMethodLabel = await resolvePaymentMethod(tx, input, !("status" in input));
-      const totals = await calculateTotals(tx, input);
+      const totals = await calculateTotals(tx, input, user);
       const durationMinutes = Math.max(30, totals.items.reduce((sum, item) => sum + item.durationMinutes, 0));
       const durationHours = Math.max(1, Math.ceil(durationMinutes / 60));
       await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationMinutes);
@@ -467,10 +462,16 @@ export const reservationService = {
         include: { items: true, user: true },
       });
 
-      if (totals.couponCode) {
-        await tx.coupon.update({
-          where: { code: totals.couponCode },
-          data: { usedCount: { increment: 1 } },
+      if (totals.couponId) {
+        await couponService.registerRedemption(tx, {
+          couponId: totals.couponId,
+          reservationId: reservation.id,
+          userId: user.id,
+          customerName: `${reservation.firstName} ${reservation.lastName}`,
+          customerEmail: reservation.email,
+          subtotal: totals.subtotal,
+          discountAmount: totals.discount,
+          total: totals.total,
         });
       }
 
@@ -485,7 +486,7 @@ export const reservationService = {
 
       const user = await resolveUser(tx, input);
       const paymentMethodLabel = await resolvePaymentMethod(tx, input, false);
-      const totals = await calculateTotals(tx, input);
+      const totals = await calculateTotals(tx, input, user);
       const durationMinutes = Math.max(30, totals.items.reduce((sum, item) => sum + item.durationMinutes, 0));
       const durationHours = Math.max(1, Math.ceil(durationMinutes / 60));
       await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationMinutes, id);
