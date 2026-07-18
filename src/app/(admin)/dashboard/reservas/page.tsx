@@ -706,6 +706,27 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
               <Field label="Departamento"><SearchableSelect options={colombiaDepartments.map((d) => d.name)} value={form.department} onChange={(value) => setForm((prev) => ({ ...prev, department: value, city: "" }))} label="Departamento" /></Field>
               <Field label="Ciudad"><SearchableSelect options={cities} value={form.city} onChange={(value) => setField("city", value)} disabled={!form.department} label="Ciudad" /></Field>
               <div className="sm:col-span-2">
+                <div className="border border-[#c4871a]/10 bg-[#080706] p-4">
+                  <label className="mb-2 block text-xs uppercase tracking-[.08em] text-[#B2AAA7]">Servicios</label>
+                  <select onChange={(e) => { addService(Number(e.target.value)); e.target.value = ""; }} className="input-admin">
+                    <option value="">Agregar servicio</option>
+                    {services.map((service) => <option key={service.id} value={service.id}>{service.name} · {formatCOP(service.finalPrice)} · {formatDuration(service.durationMinutes)}</option>)}
+                  </select>
+                  <div className="mt-3 space-y-2">
+                    {selectedServices.map(({ item, service }) => (
+                      <div key={service.id} className="flex flex-col gap-3 border border-[#3C3A37] p-3 text-sm lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0"><p className="truncate text-white">{service.name}</p><p className="text-xs text-[#5B5A59]">Duración base: {formatDuration(service.durationMinutes)} · {formatCOP(service.finalPrice)} por persona · Total {formatCOP(service.finalPrice * item.quantity * item.hours)}</p></div>
+                        <div className="grid shrink-0 gap-2 sm:grid-cols-[120px_100px_auto] sm:items-end">
+                          <MiniNumber label="Personas" value={item.quantity} min={1} max={20} onChange={(value) => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.map((row) => row.serviceId === service.id ? { ...row, quantity: value } : row) }))} />
+                          <MiniNumber label="Extra" suffix="x" value={item.hours} min={1} max={8} onChange={(value) => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.map((row) => row.serviceId === service.id ? { ...row, hours: value } : row) }))} />
+                          <button type="button" onClick={() => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.filter((row) => row.serviceId !== service.id) }))} className="text-xs text-[#B63A2B]">Quitar</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="sm:col-span-2">
                 <Field label="Fecha">
                   <DashboardDatePicker
                     month={pickerMonth}
@@ -715,32 +736,13 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
                   />
                 </Field>
               </div>
-              <Field label="Hora"><select value={form.reservationTime} onChange={(e) => setField("reservationTime", e.target.value)} className="input-admin"><option value="">Seleccionar hora</option>{(availability.length ? availability : BASE_RESERVATION_SLOTS.map((slot) => ({ ...slot, available: false, reason: null }))).map((slot) => <option key={slot.time} value={slot.time} disabled={!slot.available && slot.time !== reservation?.reservationTime}>{slot.label}{!slot.available ? ` · ${slot.reason ?? 'no disponible'}` : ''}</option>)}</select></Field>
+              <Field label="Inicio"><select value={form.reservationTime} onChange={(e) => setField("reservationTime", e.target.value)} className="input-admin"><option value="">Seleccionar inicio</option>{(availability.length ? availability : BASE_RESERVATION_SLOTS.map((slot) => ({ ...slot, available: false, reason: null }))).map((slot) => <option key={slot.time} value={slot.time} disabled={!slot.available && slot.time !== reservation?.reservationTime}>{slot.label}{!slot.available ? ` · ${slot.reason ?? 'no disponible'}` : ''}</option>)}</select></Field>
               <Field label="Estado"><select value={form.status} onChange={(e) => setField("status", e.target.value as ReservationStatus)} className="input-admin">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
               <Field label="Cupón"><input value={form.couponCode} onChange={(e) => setField("couponCode", e.target.value.toUpperCase())} className="input-admin" placeholder="POWER10" /></Field>
             </div>
 
             <Field label="Notas"><textarea value={form.scheduleNotes} onChange={(e) => setField("scheduleNotes", e.target.value)} className="input-admin min-h-24 resize-none" /></Field>
 
-            <div className="border border-[#c4871a]/10 bg-[#080706] p-4">
-              <label className="mb-2 block text-xs uppercase tracking-[.08em] text-[#B2AAA7]">Servicios</label>
-              <select onChange={(e) => { addService(Number(e.target.value)); e.target.value = ""; }} className="input-admin">
-                <option value="">Agregar servicio</option>
-                {services.map((service) => <option key={service.id} value={service.id}>{service.name} · {formatCOP(service.finalPrice)}</option>)}
-              </select>
-              <div className="mt-3 space-y-2">
-                {selectedServices.map(({ item, service }) => (
-                  <div key={service.id} className="flex items-center justify-between gap-3 border border-[#3C3A37] p-3 text-sm">
-                    <div className="min-w-0"><p className="truncate text-white">{service.name}</p><p className="text-xs text-[#5B5A59]">Duración base: {formatDuration(service.durationMinutes)} · {formatCOP(service.finalPrice)} por persona · Total {formatCOP(service.finalPrice * item.quantity * item.hours)}</p></div>
-                    <div className="grid shrink-0 gap-2 sm:grid-cols-[120px_100px_auto] sm:items-end">
-                      <MiniNumber label="Personas" value={item.quantity} min={1} max={20} onChange={(value) => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.map((row) => row.serviceId === service.id ? { ...row, quantity: value } : row) }))} />
-                      <MiniNumber label="Tiempo" suffix="x" value={item.hours} min={1} max={8} onChange={(value) => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.map((row) => row.serviceId === service.id ? { ...row, hours: value } : row) }))} />
-                      <button type="button" onClick={() => setForm((prev) => ({ ...prev, reservationTime: "", items: prev.items.filter((row) => row.serviceId !== service.id) }))} className="text-xs text-[#B63A2B]">Quitar</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="h-fit border border-[#c4871a]/12 bg-[#080706] p-4 lg:sticky lg:top-4">
