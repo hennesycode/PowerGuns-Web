@@ -583,6 +583,9 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
   const [userQuery, setUserQuery] = useState("");
   const [users, setUsers] = useState<UserOption[]>([]);
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
+  const [couponPreview, setCouponPreview] = useState<{ discountAmount: number; message: string } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
   const [saving, setSaving] = useState(false);
   const cities = form.department ? getCities(form.department) : [];
 
@@ -620,8 +623,67 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
     .filter((entry): entry is { item: { serviceId: number; quantity: number; hours: number }; service: ServiceOption } => Boolean(entry.service));
   const durationMinutes = getReservationDurationFromServices(selectedServices);
   const subtotal = selectedServices.reduce((sum, entry) => sum + entry.service.finalPrice * entry.item.quantity * entry.item.hours, 0);
+  const discountPreview = couponPreview?.discountAmount ?? 0;
+  const totalPreview = Math.max(0, subtotal - discountPreview);
+
+  useEffect(() => {
+    const code = form.couponCode.trim().toUpperCase();
+    if (!code) return;
+
+    let active = true;
+    const timeout = window.setTimeout(() => {
+      if (subtotal <= 0) {
+        setCouponPreview(null);
+        setCouponError("Agrega servicios para validar el cupón");
+        setCouponLoading(false);
+        return;
+      }
+
+      setCouponLoading(true);
+      fetch("/api/public/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!active) return;
+          if (data.valid) {
+            setCouponPreview({ discountAmount: data.discountAmount, message: data.message || "Cupón aplicado exitosamente" });
+            setCouponError("");
+          } else {
+            setCouponPreview(null);
+            setCouponError(data.message || "Cupón no válido");
+          }
+        })
+        .catch(() => {
+          if (!active) return;
+          setCouponPreview(null);
+          setCouponError("No se pudo validar el cupón");
+        })
+        .finally(() => { if (active) setCouponLoading(false); });
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [form.couponCode, subtotal]);
 
   const setField = <K extends keyof FormState>(field: K, value: FormState[K]) => setForm((prev) => ({ ...prev, [field]: value }));
+  const setCouponCode = (value: string) => {
+    const code = value.toUpperCase();
+    setField("couponCode", code);
+    if (!code.trim()) {
+      setCouponPreview(null);
+      setCouponError("");
+      setCouponLoading(false);
+      return;
+    }
+    setCouponPreview(null);
+    setCouponError("");
+    setCouponLoading(true);
+  };
   const addService = (serviceId: number) => {
     if (!serviceId) return;
     setForm((prev) => {
@@ -738,7 +800,7 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
               </div>
               <Field label="Inicio"><select value={form.reservationTime} onChange={(e) => setField("reservationTime", e.target.value)} className="input-admin"><option value="">Seleccionar inicio</option>{(availability.length ? availability : BASE_RESERVATION_SLOTS.map((slot) => ({ ...slot, available: false, reason: null }))).map((slot) => <option key={slot.time} value={slot.time} disabled={!slot.available && slot.time !== reservation?.reservationTime}>{slot.label}{!slot.available ? ` · ${slot.reason ?? 'no disponible'}` : ''}</option>)}</select></Field>
               <Field label="Estado"><select value={form.status} onChange={(e) => setField("status", e.target.value as ReservationStatus)} className="input-admin">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
-              <Field label="Cupón"><input value={form.couponCode} onChange={(e) => setField("couponCode", e.target.value.toUpperCase())} className="input-admin" placeholder="POWER10" /></Field>
+              <Field label="Cupón"><input value={form.couponCode} onChange={(e) => setCouponCode(e.target.value)} className="input-admin" placeholder="POWER10" />{couponLoading && <p className="mt-1 text-[10px] uppercase tracking-[.08em] text-[#c4871a]">Validando cupón...</p>}{couponPreview && <p className="mt-1 text-[10px] uppercase tracking-[.08em] text-green-400">{couponPreview.message}</p>}{couponError && <p className="mt-1 text-[10px] uppercase tracking-[.08em] text-[#ff8174]">{couponError}</p>}</Field>
             </div>
 
             <Field label="Notas"><textarea value={form.scheduleNotes} onChange={(e) => setField("scheduleNotes", e.target.value)} className="input-admin min-h-24 resize-none" /></Field>
@@ -752,7 +814,8 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
               <div className="flex justify-between"><span>Duración</span><span>{formatDuration(durationMinutes)}</span></div>
               <div className="flex justify-between"><span>Horario ocupado</span><span>{form.reservationTime ? `${getSlotLabel(form.reservationTime)} - ${getEndTimeLabel(form.reservationTime, durationMinutes)}` : "Pendiente"}</span></div>
               <div className="flex justify-between"><span>Subtotal</span><span>{formatCOP(subtotal)}</span></div>
-              <div className="flex justify-between border-t border-[#c4871a]/10 pt-2 font-heading text-lg font-bold uppercase text-white"><span>Total estimado</span><span className="text-[#c4871a]">{formatCOP(subtotal)}</span></div>
+              {discountPreview > 0 && <div className="flex justify-between text-[#c4871a]"><span>Descuento</span><span>-{formatCOP(discountPreview)}</span></div>}
+              <div className="flex justify-between border-t border-[#c4871a]/10 pt-2 font-heading text-lg font-bold uppercase text-white"><span>Total estimado</span><span className="text-[#c4871a]">{formatCOP(totalPreview)}</span></div>
               <p className="pt-2 text-xs text-[#5B5A59]">El backend recalcula cupón, descuento y total antes de guardar.</p>
             </div>
           </div>
