@@ -208,6 +208,37 @@ function getEndTimeLabel(time: string, durationMinutes: number) {
   return getSlotLabel(minutesToTime(timeToMinutes(time) + durationMinutes));
 }
 
+function DayReservationsList({ reservations, onView }: { reservations: Reservation[]; onView: (r: Reservation) => void }) {
+  const groups = new Map<string, Reservation[]>();
+  reservations.forEach((r) => {
+    const list = groups.get(r.reservationTime) ?? [];
+    list.push(r);
+    groups.set(r.reservationTime, list);
+  });
+
+  return (
+    <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+      {Array.from(groups.entries()).map(([time, group]) => (
+        <div key={time} className={group.length > 1 ? "grid grid-cols-2 gap-1.5" : ""}>
+          {group.map((reservation) => (
+            <button key={reservation.id} type="button" onClick={() => onView(reservation)} className="block w-full border border-[#c4871a]/12 bg-[#080706] p-2 text-left transition-colors hover:border-[#c4871a]/45 hover:bg-[#c4871a]/5 focus:outline-none focus:ring-2 focus:ring-[#c4871a]/30">
+              <div className="flex items-start justify-between gap-2">
+                <span className="truncate text-[11px] font-semibold text-[#c4871a]">{reservation.reservationCode}</span>
+                <span className={`h-2 w-2 shrink-0 rounded-full ${reservation.status === "confirmed" ? "bg-green-400" : reservation.status === "in_review" ? "bg-sky-300" : reservation.status === "completed" ? "bg-[#B2AAA7]" : reservation.status === "canceled" ? "bg-[#ff8174]" : "bg-[#d6a244]"}`} />
+              </div>
+              <p className="mt-1 truncate font-heading text-xs font-bold uppercase text-white">{reservation.firstName} {reservation.lastName}</p>
+              <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#B2AAA7]">
+                <span>{reservation.reservationTimeLabel} · {formatDuration(reservation.durationMinutes)}</span>
+                <span className="truncate text-[#5B5A59]">{reservation.services.length} serv.</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function getSlotLabel(time: string) {
   const hour = Number(time.split(":")[0]);
   const minute = time.split(":")[1];
@@ -467,21 +498,7 @@ function ReservationsCalendar({ month, days, reservationsByDate, onMonthChange, 
               </div>
 
               {dayReservations.length > 0 ? (
-                <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
-                  {dayReservations.map((reservation) => (
-                    <button key={reservation.id} type="button" onClick={() => onView(reservation)} className="block w-full border border-[#c4871a]/12 bg-[#080706] p-2 text-left transition-colors hover:border-[#c4871a]/45 hover:bg-[#c4871a]/5 focus:outline-none focus:ring-2 focus:ring-[#c4871a]/30">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="truncate text-[11px] font-semibold text-[#c4871a]">{reservation.reservationCode}</span>
-                        <span className={`h-2 w-2 shrink-0 rounded-full ${reservation.status === "confirmed" ? "bg-green-400" : reservation.status === "in_review" ? "bg-sky-300" : reservation.status === "completed" ? "bg-[#B2AAA7]" : reservation.status === "canceled" ? "bg-[#ff8174]" : "bg-[#d6a244]"}`} />
-                      </div>
-                      <p className="mt-1 truncate font-heading text-xs font-bold uppercase text-white">{reservation.firstName} {reservation.lastName}</p>
-                      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#B2AAA7]">
-                        <span>{reservation.reservationTimeLabel} · {formatDuration(reservation.durationMinutes)}</span>
-                        <span className="truncate text-[#5B5A59]">{reservation.services.length} serv.</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                <DayReservationsList reservations={dayReservations} onView={onView} />
               ) : (
                 <p className="text-xs text-[#5B5A59]">Sin reservas</p>
               )}
@@ -610,7 +627,7 @@ function ReservationFormModal({ reservation, services, onClose, onSaved }: {
       const service = services.find((option) => option.id === item.serviceId);
       return sum + Math.max(30, service?.durationMinutes || 60) * item.hours;
     }, 0));
-    const params = new URLSearchParams({ date: form.reservationDate, durationMinutes: String(durationMinutes) });
+    const params = new URLSearchParams({ date: form.reservationDate, durationMinutes: String(durationMinutes), admin: "true" });
     if (reservation) params.set("excludeReservationId", reservation.id);
     fetch(`/api/public/availability?${params.toString()}`)
       .then((res) => res.json())

@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const reservation = await reservationService.create(validation.data);
+    const reservation = await reservationService.create(validation.data, { skipOverlapCheck: true });
     const [customerEmail, companyEmail] = await Promise.all([
       emailService.sendReservationConfirmation(reservation),
       emailService.sendReservationAdminNotification(reservation),

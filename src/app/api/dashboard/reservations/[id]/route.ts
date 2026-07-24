@@ -51,7 +51,7 @@ export async function PUT(
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const reservation = await reservationService.update(id, validation.data);
+    const reservation = await reservationService.update(id, validation.data, { skipOverlapCheck: true });
 
     const statusChanged = existing && existing.status !== reservation.status;
     const scheduleChanged = existing && (

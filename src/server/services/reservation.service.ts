@@ -296,6 +296,7 @@ async function ensureSlotAvailable(
   time: string,
   durationMinutes: number,
   excludeReservationId?: string,
+  skipOverlapCheck?: boolean,
 ) {
   if (!isValidDateKey(date)) throw new Error("Fecha inválida");
   if (isPastSlot(date, time)) throw new Error("Ese horario ya no está disponible");
@@ -308,6 +309,8 @@ async function ensureSlotAvailable(
   if (!isTimeWithinBusinessHours(time, businessHours) || !isTimeRangeWithinBusinessHours(time, durationMinutes, businessHours)) {
     throw new Error("Hora inválida o fuera del horario de atención");
   }
+
+  if (skipOverlapCheck) return;
 
   const reserved = await tx.reservation.findMany({
     where: {
@@ -342,7 +345,7 @@ async function generateReservationCode(tx: Prisma.TransactionClient) {
 }
 
 export const reservationService = {
-  async getAvailability(date: string, excludeReservationId?: string, durationMinutes = 60) {
+  async getAvailability(date: string, excludeReservationId?: string, durationMinutes = 60, showAll?: boolean) {
     if (!isValidDateKey(date)) throw new Error("Fecha inválida");
 
     const reservations = await prisma.reservation.findMany({
@@ -355,7 +358,7 @@ export const reservationService = {
     });
 
     const reservedTimes = new Set(reservations.flatMap((reservation) => getOccupiedTimes(reservation.reservationTime, reservation.durationMinutes || reservation.durationHours * 60)));
-    const baseSlots = await businessHoursService.getAvailability(date, reservedTimes);
+    const baseSlots = await businessHoursService.getAvailability(date, showAll ? new Set() : reservedTimes);
     const dayOfWeek = (await import("@/lib/timezone")).getDayOfWeek(date);
     const businessHours = await businessHoursService.getBusinessHourData(dayOfWeek);
     const slots = baseSlots.map((slot) => {
@@ -363,6 +366,7 @@ export const reservationService = {
       if (!isTimeRangeWithinBusinessHours(slot.time, durationMinutes, businessHours)) {
         return { ...slot, available: false, reason: "closed" as const };
       }
+      if (showAll) return slot;
       const start = timeToMinutes(slot.time);
       const end = start + durationMinutes;
       const overlapsReserved = reservations.some((reservation) => {
@@ -421,14 +425,14 @@ export const reservationService = {
     return reservation ? serializeReservation(reservation) : null;
   },
 
-  async create(input: PublicReservationInput | DashboardReservationInput) {
+  async create(input: PublicReservationInput | DashboardReservationInput, options?: { skipOverlapCheck?: boolean }) {
     return prisma.$transaction(async (tx) => {
       const user = await resolveUser(tx, input);
       const paymentMethodLabel = await resolvePaymentMethod(tx, input, !("status" in input));
       const totals = await calculateTotals(tx, input, user);
       const durationMinutes = Math.max(30, totals.items.reduce((sum, item) => sum + item.durationMinutes, 0));
       const durationHours = Math.max(1, Math.ceil(durationMinutes / 60));
-      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationMinutes);
+      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationMinutes, undefined, options?.skipOverlapCheck);
       const reservationCode = await generateReservationCode(tx);
       const status = "status" in input ? input.status : "pending";
 
@@ -479,7 +483,7 @@ export const reservationService = {
     });
   },
 
-  async update(id: string, input: UpdateReservationInput) {
+  async update(id: string, input: UpdateReservationInput, options?: { skipOverlapCheck?: boolean }) {
     return prisma.$transaction(async (tx) => {
       const existing = await tx.reservation.findUnique({ where: { id } });
       if (!existing) throw new Error("Reserva no encontrada");
@@ -489,7 +493,7 @@ export const reservationService = {
       const totals = await calculateTotals(tx, input, user);
       const durationMinutes = Math.max(30, totals.items.reduce((sum, item) => sum + item.durationMinutes, 0));
       const durationHours = Math.max(1, Math.ceil(durationMinutes / 60));
-      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationMinutes, id);
+      await ensureSlotAvailable(tx, input.reservationDate, input.reservationTime, durationMinutes, id, options?.skipOverlapCheck);
 
       await tx.reservationItem.deleteMany({ where: { reservationId: id } });
       const reservation = await tx.reservation.update({

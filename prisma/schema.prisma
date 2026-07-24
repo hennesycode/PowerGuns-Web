@@ -345,7 +345,6 @@ model Reservation {
 
   items                ReservationItem[]
 
-  @@unique([reservationDate, reservationTime])
   @@index([reservationDate])
   @@index([status])
   @@index([email])
