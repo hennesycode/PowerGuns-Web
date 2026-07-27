@@ -51,7 +51,7 @@ export async function PUT(
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    const reservation = await reservationService.update(id, validation.data, { skipOverlapCheck: true });
+    const reservation = await reservationService.update(id, validation.data, { skipOverlapCheck: auth.session.role === "administrador" });
 
     const statusChanged = existing && existing.status !== reservation.status;
     const scheduleChanged = existing && (
