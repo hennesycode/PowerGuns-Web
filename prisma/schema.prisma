@@ -308,6 +308,47 @@ model BusinessHourSlot {
   @@index([businessHourId])
 }
 
+model BusinessHourOverride {
+  id        String                       @id @default(cuid())
+  dateKey   String                       @unique @db.VarChar(10)
+  isOpen    Boolean                      @default(false)
+  isActive  Boolean                      @default(true)
+  reason    String                       @db.VarChar(500)
+  createdBy String                       @db.VarChar(191)
+  updatedBy String?                      @db.VarChar(191)
+  createdAt DateTime                     @default(now())
+  updatedAt DateTime                     @updatedAt
+  slots     BusinessHourOverrideSlot[]
+  history   BusinessHourOverrideHistory[]
+
+  @@index([dateKey, isActive])
+}
+
+model BusinessHourOverrideSlot {
+  id         String              @id @default(cuid())
+  overrideId String
+  override   BusinessHourOverride @relation(fields: [overrideId], references: [id], onDelete: Cascade)
+  openTime   String              @db.VarChar(5)
+  closeTime  String              @db.VarChar(5)
+  sortOrder  Int                 @default(0)
+
+  @@index([overrideId])
+}
+
+model BusinessHourOverrideHistory {
+  id         String              @id @default(cuid())
+  overrideId String
+  override   BusinessHourOverride @relation(fields: [overrideId], references: [id], onDelete: Cascade)
+  action     String              @db.VarChar(20)
+  reason     String              @db.VarChar(500)
+  isOpen     Boolean
+  slotsJson  String              @db.Text
+  changedBy  String              @db.VarChar(191)
+  createdAt  DateTime            @default(now())
+
+  @@index([overrideId, createdAt])
+}
+
 model Reservation {
   id                   String            @id @default(cuid())
   reservationCode      String            @unique

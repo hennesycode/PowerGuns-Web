@@ -27,6 +27,7 @@ type AvailabilitySlot = {
   available: boolean;
   reason: "past" | "reserved" | "closed" | null;
 };
+type DateOverride = { dateKey: string; isOpen: boolean; slots: Array<{ openTime: string; closeTime: string }> };
 type PaymentMethodOption = {
   id: string;
   type: string;
@@ -104,11 +105,14 @@ function parseDateKey(value: string) {
   return new Date(year, month - 1, day);
 }
 
-function isDateAvailable(date: Date, businessHours: BusinessHourData[]) {
+function isDateAvailable(date: Date, businessHours: BusinessHourData[], overrides: DateOverride[]) {
   const normalized = new Date(date);
   normalized.setHours(0, 0, 0, 0);
+  if (normalized < getTodayStart()) return false;
+  const override = overrides.find((entry) => entry.dateKey === getDateKey(normalized));
+  if (override) return override.isOpen && override.slots.length > 0;
   const dayHours = businessHours.find((day) => day.dayOfWeek === normalized.getDay());
-  return normalized >= getTodayStart() && !!dayHours?.isOpen && dayHours.slots.length > 0;
+  return !!dayHours?.isOpen && dayHours.slots.length > 0;
 }
 
 function getTimeLabel(value: string, slots: AvailabilitySlot[]) {
@@ -133,6 +137,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [businessHours, setBusinessHours] = useState<BusinessHourData[]>([]);
+  const [dateOverrides, setDateOverrides] = useState<DateOverride[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -182,14 +187,19 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/public/business-hours")
+    const firstDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const lastDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    fetch(`/api/public/business-hours?from=${getDateKey(firstDate)}&to=${getDateKey(lastDate)}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Error al consultar horarios");
-        return data.hours as BusinessHourData[];
+        return data as { hours: BusinessHourData[]; overrides: DateOverride[] };
       })
-      .then((hours) => {
-        if (!cancelled) setBusinessHours(hours);
+      .then((data) => {
+        if (!cancelled) {
+          setBusinessHours(data.hours);
+          setDateOverrides(data.overrides ?? []);
+        }
       })
       .catch(() => {
         if (!cancelled) toast.error("No se pudieron cargar los horarios de atención");
@@ -198,7 +208,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentMonth]);
 
   useEffect(() => {
     let cancelled = false;
@@ -310,7 +320,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
     }
 
     const date = parseDateKey(form.reservationDate);
-    if (!date || !isDateAvailable(date, businessHours)) {
+    if (!date || !isDateAvailable(date, businessHours, dateOverrides)) {
       setErrors({ reservationDate: "Selecciona una fecha disponible" });
       toast.error("La fecha seleccionada no está disponible");
       return false;
@@ -375,7 +385,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
   };
 
   const selectDate = (date: Date) => {
-    if (!isDateAvailable(date, businessHours)) return;
+    if (!isDateAvailable(date, businessHours, dateOverrides)) return;
     setForm((prev) => ({
       ...prev,
       reservationDate: getDateKey(date),
@@ -628,7 +638,7 @@ export function ReservationForm({ onSubmit, loading }: ReservationFormProps) {
                 {calendarCells.map((date, index) => {
                   if (!date) return <div key={`empty-${index}`} className="aspect-square" />;
                   const key = getDateKey(date);
-                  const available = isDateAvailable(date, businessHours);
+                  const available = isDateAvailable(date, businessHours, dateOverrides);
                   const selected = form.reservationDate === key;
                   const isToday = key === getDateKey(today);
                   return (

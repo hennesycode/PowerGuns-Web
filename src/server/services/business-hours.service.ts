@@ -5,6 +5,7 @@ import {
   getDayOfWeek,
   generateSlotsFromBusinessHours,
 } from "@/lib/timezone";
+import { getColombiaNow, isValidDateKey } from "@/lib/timezone";
 
 const DAY_NAMES = [
   "Domingo",
@@ -147,18 +148,122 @@ export const businessHoursService = {
     };
   },
 
+  async getBusinessHourDataForDate(date: string): Promise<BusinessHourData | null> {
+    const override = await prisma.businessHourOverride.findUnique({
+      where: { dateKey: date },
+      include: { slots: { orderBy: { sortOrder: "asc" } } },
+    });
+    if (override?.isActive) {
+      return {
+        dayOfWeek: getDayOfWeek(date),
+        dayName: date,
+        isOpen: override.isOpen,
+        slots: override.slots.map(({ openTime, closeTime }) => ({ openTime, closeTime })),
+      };
+    }
+    return this.getBusinessHourData(getDayOfWeek(date));
+  },
+
+  async listOverrides() {
+    return prisma.businessHourOverride.findMany({
+      include: {
+        slots: { orderBy: { sortOrder: "asc" } },
+        history: { orderBy: { createdAt: "desc" } },
+      },
+      orderBy: [{ dateKey: "desc" }, { updatedAt: "desc" }],
+      take: 100,
+    });
+  },
+
+  async getPublicOverrides(from: string, to: string) {
+    if (!isValidDateKey(from) || !isValidDateKey(to) || from > to) {
+      throw new Error("Rango de fechas inválido");
+    }
+    const overrides = await prisma.businessHourOverride.findMany({
+      where: { dateKey: { gte: from, lte: to }, isActive: true },
+      include: { slots: { orderBy: { sortOrder: "asc" } } },
+      orderBy: { dateKey: "asc" },
+    });
+    return overrides.map((override) => ({
+      dateKey: override.dateKey,
+      isOpen: override.isOpen,
+      slots: override.slots.map(({ openTime, closeTime }) => ({ openTime, closeTime })),
+    }));
+  },
+
+  async saveOverride(input: {
+    dateKey: string;
+    isOpen: boolean;
+    reason: string;
+    slots: Array<{ openTime: string; closeTime: string }>;
+    changedBy: string;
+  }) {
+    const { dateKey, isOpen, reason, slots, changedBy } = input;
+    if (!isValidDateKey(dateKey) || dateKey < getColombiaNow().date) {
+      throw new Error("Selecciona una fecha válida que no haya pasado");
+    }
+    return prisma.$transaction(async (tx) => {
+      const existing = await tx.businessHourOverride.findUnique({ where: { dateKey } });
+      const action = !existing ? "created" : existing.isActive ? "updated" : "reactivated";
+      const override = await tx.businessHourOverride.upsert({
+        where: { dateKey },
+        create: { dateKey, isOpen, reason, createdBy: changedBy },
+        update: { isOpen, isActive: true, reason, updatedBy: changedBy },
+      });
+      await tx.businessHourOverrideSlot.deleteMany({ where: { overrideId: override.id } });
+      if (isOpen && slots.length) {
+        await tx.businessHourOverrideSlot.createMany({
+          data: slots.map((slot, sortOrder) => ({ ...slot, overrideId: override.id, sortOrder })),
+        });
+      }
+      await tx.businessHourOverrideHistory.create({
+        data: {
+          overrideId: override.id,
+          action,
+          reason,
+          isOpen,
+          slotsJson: JSON.stringify(isOpen ? slots : []),
+          changedBy,
+        },
+      });
+      return tx.businessHourOverride.findUniqueOrThrow({
+        where: { id: override.id },
+        include: { slots: { orderBy: { sortOrder: "asc" } }, history: { orderBy: { createdAt: "desc" } } },
+      });
+    });
+  },
+
+  async deactivateOverride(id: string, changedBy: string) {
+    return prisma.$transaction(async (tx) => {
+      const override = await tx.businessHourOverride.findUnique({
+        where: { id },
+        include: { slots: { orderBy: { sortOrder: "asc" } } },
+      });
+      if (!override || !override.isActive) throw new Error("La excepción ya no está activa");
+      await tx.businessHourOverride.update({ where: { id }, data: { isActive: false, updatedBy: changedBy } });
+      await tx.businessHourOverrideHistory.create({
+        data: {
+          overrideId: id,
+          action: "cancelled",
+          reason: override.reason,
+          isOpen: override.isOpen,
+          slotsJson: JSON.stringify(override.slots.map(({ openTime, closeTime }) => ({ openTime, closeTime }))),
+          changedBy,
+        },
+      });
+    });
+  },
+
   async getAvailability(
     date: string,
     reservedTimes: Set<string>,
   ): Promise<AvailabilitySlot[]> {
-    const dayOfWeek = getDayOfWeek(date);
-    const businessHours = await this.getBusinessHourData(dayOfWeek);
+    const businessHours = await this.getBusinessHourDataForDate(date);
     return generateSlotsFromBusinessHours(businessHours, date, reservedTimes);
   },
 
   async isTimeAvailable(date: string, time: string): Promise<boolean> {
-    const dayOfWeek = getDayOfWeek(date);
-    const businessHours = await this.getBusinessHourData(dayOfWeek);
+    const businessHours = await this.getBusinessHourDataForDate(date);
     if (!businessHours || !businessHours.isOpen) return false;
 
     const { isTimeWithinBusinessHours } = await import("@/lib/timezone");

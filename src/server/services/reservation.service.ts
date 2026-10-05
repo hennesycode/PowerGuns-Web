@@ -301,8 +301,7 @@ async function ensureSlotAvailable(
   if (!isValidDateKey(date)) throw new Error("Fecha inválida");
   if (isPastSlot(date, time)) throw new Error("Ese horario ya no está disponible");
 
-  const dayOfWeek = (await import("@/lib/timezone")).getDayOfWeek(date);
-  const businessHours = await businessHoursService.getBusinessHourData(dayOfWeek);
+  const businessHours = await businessHoursService.getBusinessHourDataForDate(date);
   if (!businessHours || !businessHours.isOpen) {
     throw new Error("No hay disponibilidad para este día");
   }
@@ -359,8 +358,7 @@ export const reservationService = {
 
     const reservedTimes = new Set(reservations.flatMap((reservation) => getOccupiedTimes(reservation.reservationTime, reservation.durationMinutes || reservation.durationHours * 60)));
     const baseSlots = await businessHoursService.getAvailability(date, showAll ? new Set() : reservedTimes);
-    const dayOfWeek = (await import("@/lib/timezone")).getDayOfWeek(date);
-    const businessHours = await businessHoursService.getBusinessHourData(dayOfWeek);
+    const businessHours = await businessHoursService.getBusinessHourDataForDate(date);
     const slots = baseSlots.map((slot) => {
       if (!slot.available) return slot;
       if (!isTimeRangeWithinBusinessHours(slot.time, durationMinutes, businessHours)) {

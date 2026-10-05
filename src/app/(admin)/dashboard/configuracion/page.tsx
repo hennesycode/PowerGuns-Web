@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { BusinessHourExceptions } from "@/components/admin/settings/BusinessHourExceptions";
 
 type TabId = "horarios" | "metodos-pago" | "reservas" | "empresa" | "notificaciones" | "seguridad";
 type PaymentProvider = "daviplata" | "nequi" | "bancolombia" | "davivienda" | "bbva";
@@ -431,6 +432,7 @@ export default function ConfiguracionPage() {
                     {saving ? "Guardando..." : "Guardar cambios"}
                   </button>
                 </div>
+                <BusinessHourExceptions weekdays={days} />
               </>
             )}
           </div>
