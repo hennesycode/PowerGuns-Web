@@ -556,7 +556,7 @@ function ProductHistoryModal({ productId, productName, onClose }: { productId: s
 function ProductsTable({ products, onEdit, onDelete, onHistory }: { products: Product[]; onEdit: (p: Product) => void; onDelete: (p: Product) => void; onHistory: (p: Product) => void }) {
   return (
     <>
-      <div className="hidden overflow-x-auto xl:block">
+      <div className="hidden overflow-x-auto 2xl:block">
         <table className="w-full min-w-[1000px] text-left text-sm border border-[#c4871a]/10">
           <thead className="bg-[#080706] text-[10px] uppercase tracking-[.12em] text-[#5B5A59]"><tr>{["Imagen","Producto","Categoría","Cantidad","Stock Mín.","Ubicación","Estado","Actualizado","Acciones"].map((h) => <th key={h} className="px-4 py-3 font-semibold">{h}</th>)}</tr></thead>
           <tbody className="divide-y divide-[#c4871a]/8">
@@ -580,17 +580,17 @@ function ProductsTable({ products, onEdit, onDelete, onHistory }: { products: Pr
           </tbody>
         </table>
       </div>
-      <div className="grid gap-3 xl:hidden">
+      <div className="grid gap-3 2xl:hidden">
         {products.map((p) => (
           <div key={p.id} className="border border-[#c4871a]/10 bg-[#171513] p-4">
             <div className="flex items-start gap-3">
               {p.imageUrl ? <Image src={p.imageUrl} alt={p.name} width={56} height={56} className="h-14 w-14 shrink-0 border border-[#c4871a]/10 bg-[#080706] object-cover" unoptimized /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center border border-[#3C3A37] bg-[#080706] text-xs text-[#5B5A59]">—</span>}
               <div className="min-w-0 flex-1"><h3 className="font-heading text-sm font-bold uppercase text-white">{p.name}</h3><p className="text-xs text-[#5B5A59]">{p.categoryName} · {p.location || "Sin ubicación"}</p><div className="mt-1 flex flex-wrap items-center gap-2 text-xs"><span className={p.quantity <= p.minStock && p.minStock > 0 ? "text-[#B63A2B]" : "text-[#B2AAA7]"}>Cant: {p.quantity}</span><span className="text-[#5B5A59]">Mín: {p.minStock}</span><span className={`inline-block border px-1.5 py-0.5 text-[9px] uppercase tracking-[.08em] ${p.isActive ? "border-green-500/30 text-green-400 bg-green-500/10" : "border-[#3C3A37] text-[#5B5A59] bg-[#080706]"}`}>{p.isActive ? "Activo" : "Inactivo"}</span></div></div>
             </div>
-            <div className="mt-3 flex gap-2">
-              <button onClick={() => onEdit(p)} className="flex-1 border border-[#3C3A37] py-2 text-[10px] font-semibold uppercase tracking-[.08em] text-[#B2AAA7] hover:text-white hover:border-[#c4871a]/50">Editar</button>
-              <button onClick={() => onDelete(p)} className="flex-1 border border-[#3C3A37] py-2 text-[10px] font-semibold uppercase tracking-[.08em] text-[#B2AAA7] hover:text-white hover:border-[#c4871a]/50">Eliminar</button>
-              <button onClick={() => onHistory(p)} className="flex-1 border border-[#3C3A37] py-2 text-[10px] font-semibold uppercase tracking-[.08em] text-[#B2AAA7] hover:text-white hover:border-[#c4871a]/50">Historial</button>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <button type="button" onClick={() => onEdit(p)} className="min-w-0 border border-[#3C3A37] px-1 py-2 text-[9px] font-semibold uppercase tracking-[.04em] text-[#B2AAA7] hover:text-white hover:border-[#c4871a]/50 sm:px-2 sm:text-[10px] sm:tracking-[.08em]">Editar</button>
+              <button type="button" onClick={() => onDelete(p)} className="min-w-0 border border-[#3C3A37] px-1 py-2 text-[9px] font-semibold uppercase tracking-[.04em] text-[#B2AAA7] hover:text-white hover:border-[#B63A2B]/50 sm:px-2 sm:text-[10px] sm:tracking-[.08em]">Eliminar</button>
+              <button type="button" onClick={() => onHistory(p)} className="min-w-0 border border-[#3C3A37] px-1 py-2 text-[9px] font-semibold uppercase tracking-[.04em] text-[#B2AAA7] hover:text-white hover:border-[#c4871a]/50 sm:px-2 sm:text-[10px] sm:tracking-[.08em]">Historial</button>
             </div>
           </div>
         ))}
